@@ -6,10 +6,11 @@ const app = express();
 
 // Configurar CORS permitindo o domínio do seu front-end hospedado no Vercel
 app.use(cors({
-  origin: 'https://redacaosmart-nz4uzaz7m-rafaelshonos-projects.vercel.app',
+  origin: 'https://www.redacaosmart.com.br', // Substitua pelo seu domínio real
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true,
 }));
+
 
 // Middleware especial para a rota /webhook, que precisa do corpo bruto da requisição
 app.use((req, res, next) => {
