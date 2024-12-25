@@ -6,6 +6,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
+  updateProfile, // ADIÇÃO/MELHORIA: import para atualizar displayName
 } from 'firebase/auth';
 import { auth, db } from '../../firebaseConfig';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -26,13 +27,18 @@ function SignupPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // ADIÇÃO/MELHORIA: Estado opcional para mensagem de sucesso
+  const [successMessage, setSuccessMessage] = useState('');
+
   const navigate = useNavigate();
 
   // Função para cadastrar com Email e Senha
   const handleSignup = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccessMessage(''); // Limpa mensagem de sucesso antes de tentar criar conta
 
+    // Validações simples
     if (senha !== confirmarSenha) {
       setError('As senhas não coincidem.');
       return;
@@ -45,8 +51,14 @@ function SignupPage() {
 
     setLoading(true);
     try {
+      // Criação do usuário via e-mail/senha
       const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
       const user = userCredential.user;
+
+      // ADIÇÃO/MELHORIA: Atualiza o displayName no objeto do Auth
+      await updateProfile(user, {
+        displayName: nome,
+      });
 
       // Salva informações adicionais do usuário no Firestore
       await setDoc(doc(db, 'users', user.uid), {
@@ -55,7 +67,13 @@ function SignupPage() {
         fotoURL: user.photoURL || '',
       });
 
-      navigate('/'); // Redireciona para a página inicial após o cadastro
+      // ADIÇÃO/MELHORIA: Mensagem de sucesso (caso queira exibir no próprio componente antes de navegar)
+      setSuccessMessage('Conta criada com sucesso! Redirecionando...');
+      
+      // Redireciona para a página inicial após o cadastro
+      setTimeout(() => {
+        navigate('/');
+      }, 1500);
     } catch (error) {
       console.error('Erro ao cadastrar:', error);
       switch (error.code) {
@@ -81,6 +99,9 @@ function SignupPage() {
     const provider = new GoogleAuthProvider();
     try {
       setLoading(true);
+      setError('');
+      setSuccessMessage('');
+
       const userCredential = await signInWithPopup(auth, provider);
       const user = userCredential.user;
 
@@ -96,7 +117,11 @@ function SignupPage() {
         });
       }
 
-      navigate('/'); // Redireciona para a página inicial após o cadastro
+      // Mensagem de sucesso e redirecionamento
+      setSuccessMessage('Conta Google cadastrada com sucesso! Redirecionando...');
+      setTimeout(() => {
+        navigate('/');
+      }, 1500);
     } catch (error) {
       console.error('Erro ao cadastrar com Google:', error);
       setError('Falha no cadastro com Google.');
@@ -177,12 +202,23 @@ function SignupPage() {
           Criar Conta
         </h2>
 
+        {/* Mensagem de Erro */}
         {error && (
           <div
             className="px-4 py-3 rounded mb-4 text-center"
             style={{ backgroundColor: '#f8d7da', color: '#721c24' }}
           >
             {error}
+          </div>
+        )}
+
+        {/* Mensagem de Sucesso (opcional) */}
+        {successMessage && (
+          <div
+            className="px-4 py-3 rounded mb-4 text-center"
+            style={{ backgroundColor: '#d4edda', color: '#155724' }}
+          >
+            {successMessage}
           </div>
         )}
 
@@ -304,7 +340,11 @@ function SignupPage() {
         {/* Link para Login */}
         <p className="mt-6 text-center" style={{ color: '#6c6a81' }}>
           Já tem uma conta?{' '}
-          <Link to="/login" style={{ color: '#4cad87' }} className="font-medium hover:underline">
+          <Link
+            to="/login"
+            style={{ color: '#4cad87' }}
+            className="font-medium hover:underline"
+          >
             Faça Login
           </Link>
         </p>
