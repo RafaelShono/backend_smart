@@ -4,8 +4,14 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 const authenticateFirebaseToken = require('../middlewares/authenticateFirebaseToken');
+const admin = require('firebase-admin');
 
-// Endpoint para analisar a redação
+// Certifique-se de que o Firebase Admin está inicializado
+// admin.initializeApp({
+//   credential: admin.credential.applicationDefault(),
+//   // databaseURL: 'https://<YOUR_PROJECT_ID>.firebaseio.com'
+// });
+
 router.post('/analyze', authenticateFirebaseToken, async (req, res) => {
   let { text, tema } = req.body;
 
@@ -25,13 +31,34 @@ router.post('/analyze', authenticateFirebaseToken, async (req, res) => {
   }
 
   try {
-    // Verifica se a chave da API está definida
+    const user = req.user; // Obtém o usuário autenticado
+
+    if (!user) {
+      return res.status(401).send({ error: 'Usuário não autenticado.' });
+    }
+
+    // Obtém o documento do usuário
+    const userDocRef = admin.firestore().collection('users').doc(user.uid);
+    const userDoc = await userDocRef.get();
+
+    if (!userDoc.exists) {
+      return res.status(404).send({ error: 'Usuário não encontrado.' });
+    }
+
+    const userData = userDoc.data();
+
+    // Verifica o contador e o status premium
+    if (!userData.premium && (userData.redacoesCount >= 3)) {
+      return res.status(403).send({ error: 'Limite de redações atingido. Faça upgrade para continuar.' });
+    }
+
+    // Chamada à API da OpenAI usando gpt-4
     if (!process.env.OPENAI_API_KEY) {
       console.error('Erro: Chave da API da OpenAI não está definida.');
       return res.status(500).send({ error: 'Chave da API não configurada.' });
     }
 
-    // Constrói o prompt incluindo os detalhes do tema e os critérios do ENEM
+    // Constrói o prompt
     const prompt = `
 Você é um avaliador experiente de redações do ENEM. Avalie a redação a seguir com base nas 5 competências do ENEM, fornecendo feedback detalhado e uma pontuação para cada competência (0 a 200 pontos). Considere o tema, a imagem e a descrição fornecidos.
 
@@ -122,6 +149,22 @@ Por favor, responda apenas com um objeto JSON contendo as seguintes chaves:
         .send({ error: 'Resposta inválida da avaliação. Tente novamente mais tarde.' });
     }
 
+    // Salva a redação e a avaliação no Firestore
+    await admin.firestore().collection('redacoes').add({
+      usuarioId: user.uid,
+      nome: userData.nome,
+      fotoURL: userData.fotoURL,
+      texto,
+      avaliacao: analysis,
+      temaId: tema.id,
+      criadoEm: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // Atualiza o número de redações enviadas pelo usuário
+    await userDocRef.update({
+      redacoesCount: admin.firestore.FieldValue.increment(1),
+    });
+
     res.status(200).json({ analysis });
   } catch (error) {
     console.error('Erro ao analisar a redação:', error.response?.data || error.message || error);
@@ -131,6 +174,8 @@ Por favor, responda apenas com um objeto JSON contendo as seguintes chaves:
       res.status(500).send({ error: 'Falha na autenticação. Verifique a chave da API.' });
     } else if (error.response && error.response.status === 429) {
       res.status(500).send({ error: 'Limite de taxa excedido. Tente novamente mais tarde.' });
+    } else if (error.message === 'Limite de redações atingido. Faça upgrade para continuar.') {
+      res.status(403).send({ error: 'Limite de redações atingido. Faça upgrade para continuar.' });
     } else {
       res.status(500).send({ error: 'Erro ao analisar a redação' });
     }
