@@ -9,7 +9,7 @@ const admin = require('firebase-admin');
 // Certifique-se de que o Firebase Admin está inicializado
 // admin.initializeApp({
 //   credential: admin.credential.applicationDefault(),
-//   // databaseURL: 'https://<YOUR_PROJECT_ID>.firebaseio.com'
+//   // databaseURL: 'https://appviagens-ec9b1-default-rtdb.firebaseio.com"'
 // });
 
 router.post('/analyze', authenticateFirebaseToken, async (req, res) => {
