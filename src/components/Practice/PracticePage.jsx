@@ -93,7 +93,7 @@ function PracticePage() {
 
       // Envia a redação e os detalhes do tema para o backend Express
       const response = await axios.post(
-        'http://localhost:5000/analyze',
+        'https://backend-smart-ys4l.onrender.com/routes/analyze',
         {
           text: texto,
           tema: {
