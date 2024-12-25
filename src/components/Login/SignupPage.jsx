@@ -6,16 +6,16 @@ import {
   createUserWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
-  updateProfile, // ADIÇÃO/MELHORIA: import para atualizar displayName
+  updateProfile,
 } from 'firebase/auth';
 import { auth, db } from '../../firebaseConfig';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { FaUser, FaEnvelope, FaLock, FaGoogle } from 'react-icons/fa';
-import { useAuth } from '../context/AuthContext'; // Importe o hook useAuth
-import Avatar from 'react-avatar'; // Opcional: para exibir a foto do usuário
+import { useAuth } from '../context/AuthContext';
+import Avatar from 'react-avatar';
 
 function SignupPage() {
-  const { usuarioAtual } = useAuth(); // Acessando o usuário atual do contexto
+  const { usuarioAtual } = useAuth();
 
   // Estados para o formulário de cadastro
   const [nome, setNome] = useState('');
@@ -26,8 +26,6 @@ function SignupPage() {
   // Estados para gerenciamento de erros e carregamento
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  // ADIÇÃO/MELHORIA: Estado opcional para mensagem de sucesso
   const [successMessage, setSuccessMessage] = useState('');
 
   const navigate = useNavigate();
@@ -36,9 +34,9 @@ function SignupPage() {
   const handleSignup = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccessMessage(''); // Limpa mensagem de sucesso antes de tentar criar conta
+    setSuccessMessage('');
 
-    // Validações simples
+    // Validações
     if (senha !== confirmarSenha) {
       setError('As senhas não coincidem.');
       return;
@@ -55,22 +53,23 @@ function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
       const user = userCredential.user;
 
-      // ADIÇÃO/MELHORIA: Atualiza o displayName no objeto do Auth
+      // Atualiza o displayName no objeto do Auth
       await updateProfile(user, {
         displayName: nome,
       });
 
       // Salva informações adicionais do usuário no Firestore
       await setDoc(doc(db, 'users', user.uid), {
-        nome: nome, // Use o nome fornecido pelo usuário
+        nome: nome,
         email: user.email,
         fotoURL: user.photoURL || '',
+        redacoesCount: 0, // Inicializa o contador
+        premium: false, // Inicializa como não premium
       });
 
-      // ADIÇÃO/MELHORIA: Mensagem de sucesso (caso queira exibir no próprio componente antes de navegar)
       setSuccessMessage('Conta criada com sucesso! Redirecionando...');
-      
-      // Redireciona para a página inicial após o cadastro
+
+      // Redireciona após um curto período para exibir a mensagem de sucesso
       setTimeout(() => {
         navigate('/');
       }, 1500);
@@ -114,10 +113,11 @@ function SignupPage() {
           nome: user.displayName || 'Desconhecido',
           email: user.email,
           fotoURL: user.photoURL || '',
+          redacoesCount: 0, // Inicializa o contador
+          premium: false, // Inicializa como não premium
         });
       }
 
-      // Mensagem de sucesso e redirecionamento
       setSuccessMessage('Conta Google cadastrada com sucesso! Redirecionando...');
       setTimeout(() => {
         navigate('/');
