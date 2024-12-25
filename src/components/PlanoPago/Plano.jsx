@@ -9,7 +9,7 @@ import { loadStripe } from '@stripe/stripe-js';
 // Carrega a chave pública do Stripe
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
-
+console.log('CHAVE:', import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 function PlanoPage() {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -24,12 +24,13 @@ function PlanoPage() {
     setError('');
     try {
       const stripe = await stripePromise;
-
+      console.log('CHAVE:', import.meta.env.VITE_STRIPE_PUBLIC_KEY);
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/create-checkout-session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        
         // Envia o plano selecionado e o userId para o backend
         body: JSON.stringify({ plano: dadosPlano.plano, userId: userId }),
       });
