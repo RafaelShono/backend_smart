@@ -14,6 +14,7 @@ import MinhasRedacoes from './components/MinhasRedacoes/MinhasRedacoes';
 import Plano from './components/PlanoPago/Plano';
 import Contato from './components/Contato/Contato';
 import CanceladoPage from './components/Cancelar/Cancelar';
+import SucessoPage from './components/Sucesso/Sucesso';
 function App() {
   return (
     <>
@@ -66,7 +67,7 @@ function App() {
         <Route path="/comofunciona" element={<ComoFunciona />} />
         <Route path="/Contato" element={<Contato />} />
         <Route path="/cancelado" element={<CanceladoPage />} />
-
+        <Route path="/sucesso" element={<SucessoPage />} />
       </Routes>
       
     </>
