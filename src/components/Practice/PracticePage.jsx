@@ -60,6 +60,8 @@ function PracticePage() {
     setAvaliacao(null); // Limpa a avaliação anterior ao mudar de tema
   };
 
+
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -69,7 +71,7 @@ function PracticePage() {
     const userSnap = await getDoc(userRef);
     const userData = userSnap.data();
 
-    if (!userData.planoAtivo && userData.redacoesEnviadas >= 5) {
+    if (!userData.planoAtivo && userData.redacoesEnviadas >= 2) {
       alert(
         'Você atingiu o limite de 2 redações gratuitas. Por favor, faça um upgrade para continuar.'
       );
