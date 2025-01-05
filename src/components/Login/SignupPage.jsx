@@ -65,6 +65,8 @@ function SignupPage() {
         fotoURL: user.photoURL || '',
         redacoesCount: 0, // Inicializa o contador
         premium: false, // Inicializa como não premium
+        redacoesEnviadas: 0,
+        limiteRedacoes: 2 // Define 3 no cadastro
       });
 
       setSuccessMessage('Conta criada com sucesso! Redirecionando...');

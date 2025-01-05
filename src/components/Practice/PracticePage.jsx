@@ -75,7 +75,7 @@ function PracticePage() {
       alert(
         'Você atingiu o limite de 2 redações gratuitas. Por favor, faça um upgrade para continuar.'
       );
-      navigate('Plano');
+      navigate('/plano');
       return;
     }
 
