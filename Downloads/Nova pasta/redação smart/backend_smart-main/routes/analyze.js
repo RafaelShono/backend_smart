@@ -170,15 +170,15 @@ async function gerarTemaEnemReal(areaTema, nivelProva) {
     
     console.log(`🔍 Buscando informações sobre: ${termoAleatorio}`);
     
-    // Buscar informações reais sobre o tema
+    // Buscar informações reais sobre o tema com filtros mais rigorosos
     const response = await axios.get(BRAVE_BASE_URL, {
       headers: {
         'X-Subscription-Token': BRAVE_API_KEY,
         'Accept': 'application/json'
       },
       params: {
-        q: `${termoAleatorio} Brasil`,
-        count: 3,
+        q: `${termoAleatorio} Brasil desafios problemas site:gov.br OR site:ibge.gov.br OR site:mec.gov.br OR site:saude.gov.br OR site:ipea.gov.br OR site:cgi.br`,
+        count: 5,
         offset: 0,
         mkt: 'pt-BR',
         safesearch: 'moderate'
@@ -200,10 +200,11 @@ async function gerarTemaEnemReal(areaTema, nivelProva) {
         fonte: 'Sistema de Temas ENEM - Fontes Reais'
       };
       
-      // Criar textos motivadores baseados nos resultados reais
-      resultados.slice(0, 4).forEach((resultado, index) => {
-        // Limpar e processar o conteúdo
-        let conteudo = resultado.description || `Informações sobre ${termoAleatorio} no contexto brasileiro.`;
+      // Filtrar e processar resultados para textos motivadores de qualidade
+      const resultadosFiltrados = [];
+      
+      for (const resultado of resultados) {
+        let conteudo = resultado.description || '';
         
         // Remover tags HTML
         conteudo = conteudo.replace(/<[^>]*>/g, '');
@@ -212,26 +213,60 @@ async function gerarTemaEnemReal(areaTema, nivelProva) {
         conteudo = conteudo.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
         conteudo = conteudo.replace(/&quot;/g, '"').replace(/&#39;/g, "'");
         
-        // Filtrar conteúdo de proteção de segurança
-        if (conteudo.includes('security service') || 
-            conteudo.includes('Please enable JavaScript') ||
-            conteudo.includes('We are checking your browser') ||
-            conteudo.length < 50) {
-          conteudo = `Este tema aborda questões importantes sobre ${termoAleatorio} no contexto brasileiro, apresentando desafios e oportunidades para discussão e reflexão na sociedade contemporânea.`;
-        }
+        // Verificar se o conteúdo é válido e em português
+        const isValidPortuguese = (
+          conteudo.length >= 100 && // Mínimo 100 caracteres
+          conteudo.length <= 500 && // Máximo 500 caracteres
+          !conteudo.includes('security service') &&
+          !conteudo.includes('Please enable JavaScript') &&
+          !conteudo.includes('We are checking your browser') &&
+          !conteudo.includes('The Brazilian') && // Evitar conteúdo em inglês
+          !conteudo.includes('Data privacy is the ability') && // Evitar conteúdo genérico
+          !conteudo.includes('Escola líder no Brasil em') && // Evitar conteúdo comercial
+          (conteudo.includes('Brasil') || conteudo.includes('brasileiro') || conteudo.includes('nacional')) && // Deve mencionar Brasil
+          resultado.url.includes('.gov.br') // Priorizar sites governamentais
+        );
         
-        // Limitar tamanho do conteúdo
-        if (conteudo.length > 300) {
-          conteudo = conteudo.substring(0, 300) + '...';
+        if (isValidPortuguese) {
+          resultadosFiltrados.push({
+            titulo: `Texto ${String.fromCharCode(65 + resultadosFiltrados.length)}`,
+            conteudo: conteudo,
+            fonte: resultado.url,
+            fonteTitulo: resultado.title
+          });
         }
+      }
+      
+      // Se não encontrou resultados válidos, criar textos motivadores padrão
+      if (resultadosFiltrados.length === 0) {
+        console.log('⚠️ Nenhum resultado válido encontrado, criando textos padrão');
         
-        tema.textosMotivadores.push({
-          titulo: `Texto ${String.fromCharCode(65 + index)}`,
-          conteudo: conteudo,
-          fonte: resultado.url,
-          fonteTitulo: resultado.title
-        });
-      });
+        const textosPadrao = [
+          {
+            titulo: "Texto A",
+            conteudo: `O tema ${termoAleatorio} representa um dos principais desafios enfrentados pela sociedade brasileira contemporânea. Esta questão afeta diretamente a qualidade de vida dos cidadãos e requer atenção especial dos poderes públicos e da sociedade civil.`,
+            fonte: "Sistema de Temas ENEM - Análise Contextual",
+            fonteTitulo: "Análise Contextual"
+          },
+          {
+            titulo: "Texto B", 
+            conteudo: `No contexto brasileiro, ${termoAleatorio} apresenta características específicas que diferem de outros países. A diversidade regional, cultural e socioeconômica do Brasil cria desafios únicos que demandam soluções adaptadas à realidade nacional.`,
+            fonte: "Sistema de Temas ENEM - Contexto Nacional",
+            fonteTitulo: "Contexto Nacional"
+          },
+          {
+            titulo: "Texto C",
+            conteudo: `A discussão sobre ${termoAleatorio} no Brasil envolve múltiplas dimensões: social, econômica, política e cultural. É fundamental que a sociedade brasileira reflita sobre este tema e busque caminhos para superar os desafios identificados.`,
+            fonte: "Sistema de Temas ENEM - Reflexão Social",
+            fonteTitulo: "Reflexão Social"
+          }
+        ];
+        
+        tema.textosMotivadores = textosPadrao;
+      } else {
+        // Usar resultados filtrados (máximo 3)
+        tema.textosMotivadores = resultadosFiltrados.slice(0, 3);
+      }
       
       console.log(`✅ Tema real gerado: "${tema.titulo}"`);
       return tema;
