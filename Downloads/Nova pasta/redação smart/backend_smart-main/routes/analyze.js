@@ -11,23 +11,44 @@ const admin = require('firebase-admin');
 const BRAVE_API_KEY = process.env.BRAVE_API_KEY || 'BSANe0vJ56EwwgLZ4zE3nf2S2BLOYCd';
 const BRAVE_BASE_URL = 'https://api.search.brave.com/res/v1/web/search';
 
+// Cache e Rate Limiting
+const cache = new Map();
+const CACHE_TTL = 3600000; // 1 hora
+const RATE_LIMIT_DELAY = 2000; // 2 segundos entre requisições
+let lastRequestTime = 0;
+
 // Função para buscar fontes reais usando API do Brave
 async function buscarFonteReal(termo, fonte) {
   try {
-    // Tentar diferentes estratégias de busca
+    // Verificar cache primeiro
+    const cacheKey = `${fonte}_${termo}`;
+    const cached = cache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
+      console.log(`💾 Cache hit para ${fonte}: ${cached.url}`);
+      return cached;
+    }
+
+    // Rate limiting - aguardar se necessário
+    const now = Date.now();
+    const timeSinceLastRequest = now - lastRequestTime;
+    if (timeSinceLastRequest < RATE_LIMIT_DELAY) {
+      const waitTime = RATE_LIMIT_DELAY - timeSinceLastRequest;
+      console.log(`⏳ Aguardando ${waitTime}ms para respeitar rate limit...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+
+    // Tentar apenas as queries mais eficazes
     const queries = [
       `${fonte} ${termo} site:gov.br`,
       `${fonte} ${termo} site:ibge.gov.br`,
-      `${fonte} ${termo} site:saude.gov.br`,
       `${fonte} ${termo} site:mec.gov.br`,
-      `${fonte} ${termo} site:ipea.gov.br`,
-      `${fonte} ${termo} site:cgi.br`,
-      `${termo} ${fonte} brasil`,
-      `${fonte} ${termo} 2023 2024`
+      `${termo} ${fonte} brasil`
     ];
 
     for (const query of queries) {
       try {
+        lastRequestTime = Date.now();
+        
         const response = await axios.get(BRAVE_BASE_URL, {
           headers: {
             'X-Subscription-Token': BRAVE_API_KEY,
@@ -35,7 +56,7 @@ async function buscarFonteReal(termo, fonte) {
           },
           params: {
             q: query,
-            count: 5,
+            count: 3,
             offset: 0,
             mkt: 'pt-BR',
             safesearch: 'moderate'
@@ -54,15 +75,26 @@ async function buscarFonteReal(termo, fonte) {
           ) || response.data.web.results[0];
 
           if (resultado && resultado.url) {
-            console.log(`✅ Fonte encontrada para ${fonte}: ${resultado.url}`);
-            return {
+            const fonteEncontrada = {
               url: resultado.url,
               titulo: resultado.title,
-              descricao: resultado.description
+              descricao: resultado.description,
+              timestamp: Date.now()
             };
+            
+            // Salvar no cache
+            cache.set(cacheKey, fonteEncontrada);
+            
+            console.log(`✅ Fonte encontrada para ${fonte}: ${resultado.url}`);
+            return fonteEncontrada;
           }
         }
       } catch (queryError) {
+        if (queryError.response && queryError.response.status === 429) {
+          console.log(`🚫 Rate limit atingido para ${fonte}, aguardando...`);
+          await new Promise(resolve => setTimeout(resolve, 5000)); // Aguardar 5 segundos
+          continue;
+        }
         console.log(`❌ Query falhou: ${query}`, queryError.message);
         continue;
       }
@@ -76,7 +108,8 @@ async function buscarFonteReal(termo, fonte) {
   return {
     url: null,
     titulo: fonte,
-    descricao: null
+    descricao: null,
+    timestamp: Date.now()
   };
 }
 
