@@ -643,7 +643,7 @@ function PracticePage() {
               <Sidebar.Header>
                 <div className="flex items-center space-x-3">
                   <div className="w-8 h-8 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-lg flex items-center justify-center">
-                    <FaRobot className="text-white text-sm" data-no-animate />
+                    <FaBrain className="text-white text-sm" data-no-animate />
                   </div>
                   <h3 className="font-semibold text-gray-900">IA Assistant</h3>
                 </div>
