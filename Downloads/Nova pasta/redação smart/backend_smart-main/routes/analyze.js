@@ -17,6 +17,95 @@ const CACHE_TTL = 3600000; // 1 hora
 const RATE_LIMIT_DELAY = 2000; // 2 segundos entre requisições
 let lastRequestTime = 0;
 
+// Função para validar se uma fonte é realmente confiável
+function validarFonteConfiavel(url, fonteEsperada) {
+  try {
+    // 1. Verificar se a URL é válida
+    if (!url || typeof url !== 'string') {
+      return { isValid: false, reason: 'URL inválida' };
+    }
+
+    // 2. Verificar se é HTTPS (segurança)
+    if (!url.startsWith('https://')) {
+      return { isValid: false, reason: 'URL não é HTTPS' };
+    }
+
+    // 3. Lista de domínios oficiais confiáveis
+    const dominiosConfiaveis = [
+      'gov.br',
+      'ibge.gov.br',
+      'mec.gov.br',
+      'saude.gov.br',
+      'ipea.gov.br',
+      'cgi.br',
+      'who.int', // OMS
+      'un.org', // ONU
+      'unesco.org',
+      'fao.org'
+    ];
+
+    // 4. Verificar se o domínio é confiável
+    const urlObj = new URL(url);
+    const dominioConfiavel = dominiosConfiaveis.some(dominio => 
+      urlObj.hostname.includes(dominio)
+    );
+
+    if (!dominioConfiavel) {
+      return { isValid: false, reason: `Domínio não confiável: ${urlObj.hostname}` };
+    }
+
+    // 5. Verificar se a fonte corresponde ao domínio esperado
+    const mapeamentoFontes = {
+      'IBGE': 'ibge.gov.br',
+      'Ministério da Saúde': 'saude.gov.br',
+      'IPEA': 'ipea.gov.br',
+      'MEC': 'mec.gov.br',
+      'CGI.br': 'cgi.br',
+      'OMS': 'who.int',
+      'Instituto Palavra Aberta': 'palavraaberta.org.br',
+      'Ministério das Comunicações': 'gov.br'
+    };
+
+    const dominioEsperado = mapeamentoFontes[fonteEsperada];
+    if (dominioEsperado && !urlObj.hostname.includes(dominioEsperado)) {
+      return { isValid: false, reason: `Domínio não corresponde à fonte esperada: ${fonteEsperada}` };
+    }
+
+    // 6. Verificar se não é uma página de erro ou redirecionamento
+    const pathname = urlObj.pathname.toLowerCase();
+    const paginasInvalidas = [
+      '/404',
+      '/error',
+      '/not-found',
+      '/redirect',
+      '/login',
+      '/search',
+      '/busca'
+    ];
+
+    if (paginasInvalidas.some(pagina => pathname.includes(pagina))) {
+      return { isValid: false, reason: 'URL parece ser uma página de erro ou redirecionamento' };
+    }
+
+    // 7. Verificar se tem conteúdo relevante no path
+    if (pathname.length < 10) {
+      return { isValid: false, reason: 'URL muito curta, provavelmente não é uma página de conteúdo' };
+    }
+
+    // 8. Verificar se não é um arquivo (PDF, DOC, etc.)
+    const extensoesArquivo = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx'];
+    if (extensoesArquivo.some(ext => url.toLowerCase().includes(ext))) {
+      return { isValid: false, reason: 'URL aponta para um arquivo, não uma página web' };
+    }
+
+    // Se passou em todas as validações
+    return { isValid: true, reason: 'Fonte validada com sucesso' };
+
+  } catch (error) {
+    return { isValid: false, reason: `Erro na validação: ${error.message}` };
+  }
+}
+
 // Função para buscar fontes reais usando API do Brave
 async function buscarFonteReal(termo, fonte) {
   try {
@@ -75,18 +164,26 @@ async function buscarFonteReal(termo, fonte) {
           ) || response.data.web.results[0];
 
           if (resultado && resultado.url) {
-            const fonteEncontrada = {
-              url: resultado.url,
-              titulo: resultado.title,
-              descricao: resultado.description,
-              timestamp: Date.now()
-            };
+            // VALIDAÇÃO RIGOROSA: Verificar se a fonte é realmente confiável
+            const urlValida = validarFonteConfiavel(resultado.url, fonte);
             
-            // Salvar no cache
-            cache.set(cacheKey, fonteEncontrada);
-            
-            console.log(`✅ Fonte encontrada para ${fonte}: ${resultado.url}`);
-            return fonteEncontrada;
+            if (urlValida.isValid) {
+              const fonteEncontrada = {
+                url: resultado.url,
+                titulo: resultado.title,
+                descricao: resultado.description,
+                timestamp: Date.now(),
+                validada: true
+              };
+              
+              // Salvar no cache
+              cache.set(cacheKey, fonteEncontrada);
+              
+              console.log(`✅ Fonte VALIDADA para ${fonte}: ${resultado.url}`);
+              return fonteEncontrada;
+            } else {
+              console.log(`❌ Fonte REJEITADA para ${fonte}: ${resultado.url} - ${urlValida.reason}`);
+            }
           }
         }
       } catch (queryError) {
@@ -104,12 +201,14 @@ async function buscarFonteReal(termo, fonte) {
   }
   
   // Fallback para fonte estática se a API falhar
-  console.log(`⚠️ Usando fallback para ${fonte}`);
+  console.log(`⚠️ Usando fallback para ${fonte} - NENHUMA FONTE REAL ENCONTRADA`);
   return {
     url: null,
     titulo: fonte,
     descricao: null,
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    validada: false,
+    isFallback: true
   };
 }
 
@@ -259,23 +358,36 @@ router.post('/generate-theme-ai', authenticateFirebaseToken, async (req, res) =>
     
     console.log(`📊 Fontes encontradas: ${fontesReais.length}`);
     
-    // Atualizar fontes do tema selecionado com fontes reais
+    // Atualizar fontes do tema selecionado APENAS com fontes validadas
     if (fontesReais.length > 0) {
       console.log('🔄 Atualizando fontes do tema...');
       temaSelecionado.textosMotivadores = temaSelecionado.textosMotivadores.map((texto, index) => {
-        if (fontesReais[index]) {
-          const novaFonte = fontesReais[index].url || texto.fonte;
-          console.log(`📝 Texto ${index + 1}: ${texto.fonte} → ${novaFonte}`);
+        if (fontesReais[index] && fontesReais[index].validada && fontesReais[index].url) {
+          const novaFonte = fontesReais[index].url;
+          console.log(`✅ Texto ${index + 1}: ${texto.fonte} → ${novaFonte} (VALIDADA)`);
           return {
             ...texto,
             fonte: novaFonte,
-            fonteTitulo: fontesReais[index].titulo || texto.fonte
+            fonteTitulo: fontesReais[index].titulo || texto.fonte,
+            fonteValidada: true
+          };
+        } else if (fontesReais[index] && fontesReais[index].isFallback) {
+          console.log(`⚠️ Texto ${index + 1}: Mantendo fonte estática - ${texto.fonte} (FALLBACK)`);
+          return {
+            ...texto,
+            fonteValidada: false,
+            isFallback: true
+          };
+        } else {
+          console.log(`❌ Texto ${index + 1}: Fonte rejeitada, mantendo estática - ${texto.fonte}`);
+          return {
+            ...texto,
+            fonteValidada: false
           };
         }
-        return texto;
       });
     } else {
-      console.log('⚠️ Nenhuma fonte real foi encontrada, mantendo fontes estáticas');
+      console.log('⚠️ Nenhuma fonte real foi encontrada, mantendo TODAS as fontes estáticas');
     }
     
     res.json({
