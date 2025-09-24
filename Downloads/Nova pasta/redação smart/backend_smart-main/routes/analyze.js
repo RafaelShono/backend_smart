@@ -237,9 +237,14 @@ async function gerarTemaEnemReal(areaTema, nivelProva) {
         }
       }
       
-      // Se não encontrou resultados válidos, criar textos motivadores padrão
-      if (resultadosFiltrados.length === 0) {
-        console.log('⚠️ Nenhum resultado válido encontrado, criando textos padrão');
+      // Garantir sempre 3 textos motivadores
+      if (resultadosFiltrados.length >= 3) {
+        // Usar os 3 melhores resultados filtrados
+        tema.textosMotivadores = resultadosFiltrados.slice(0, 3);
+        console.log(`✅ Usando ${resultadosFiltrados.length} resultados válidos encontrados`);
+      } else {
+        // Complementar com textos padrão para garantir 3 textos
+        console.log(`⚠️ Encontrados apenas ${resultadosFiltrados.length} resultados válidos, complementando com textos padrão`);
         
         const textosPadrao = [
           {
@@ -262,10 +267,13 @@ async function gerarTemaEnemReal(areaTema, nivelProva) {
           }
         ];
         
-        tema.textosMotivadores = textosPadrao;
-      } else {
-        // Usar resultados filtrados (máximo 3)
-        tema.textosMotivadores = resultadosFiltrados.slice(0, 3);
+        // Combinar resultados válidos com textos padrão
+        tema.textosMotivadores = [...resultadosFiltrados];
+        
+        // Adicionar textos padrão até completar 3
+        for (let i = resultadosFiltrados.length; i < 3; i++) {
+          tema.textosMotivadores.push(textosPadrao[i]);
+        }
       }
       
       console.log(`✅ Tema real gerado: "${tema.titulo}"`);
