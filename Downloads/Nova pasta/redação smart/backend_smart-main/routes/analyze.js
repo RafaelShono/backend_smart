@@ -177,8 +177,8 @@ async function gerarTemaEnemReal(areaTema, nivelProva) {
         'Accept': 'application/json'
       },
       params: {
-        q: `${termoAleatorio} Brasil desafios problemas`,
-        count: 5,
+        q: `${termoAleatorio} Brasil`,
+        count: 3,
         offset: 0,
         mkt: 'pt-BR',
         safesearch: 'moderate'
@@ -216,6 +216,10 @@ async function gerarTemaEnemReal(areaTema, nivelProva) {
     
   } catch (error) {
     console.error('Erro ao gerar tema real:', error.message);
+    if (error.response) {
+      console.error('Status:', error.response.status);
+      console.error('Data:', error.response.data);
+    }
   }
   
   return null;
