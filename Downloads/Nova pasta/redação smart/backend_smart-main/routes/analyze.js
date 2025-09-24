@@ -106,6 +106,121 @@ function validarFonteConfiavel(url, fonteEsperada) {
   }
 }
 
+// Função para gerar tema ENEM real e dinâmico
+async function gerarTemaEnemReal(areaTema, nivelProva) {
+  try {
+    console.log(`🎯 Gerando tema ENEM real para área: ${areaTema}`);
+    
+    // Termos de busca para diferentes áreas
+    const termosPorArea = {
+      'social': [
+        'desigualdade social Brasil',
+        'violência urbana',
+        'saúde pública',
+        'educação básica',
+        'trabalho informal',
+        'moradia popular',
+        'segurança alimentar',
+        'direitos humanos'
+      ],
+      'tecnologia': [
+        'inteligência artificial',
+        'inclusão digital',
+        'desinformação fake news',
+        'privacidade dados',
+        'algoritmos redes sociais',
+        'automação empregos',
+        'ciberbullying',
+        'dependência tecnológica'
+      ],
+      'meio ambiente': [
+        'mudanças climáticas',
+        'desmatamento Amazônia',
+        'poluição atmosférica',
+        'recursos hídricos',
+        'energias renováveis',
+        'sustentabilidade urbana',
+        'biodiversidade',
+        'economia circular'
+      ],
+      'cultura': [
+        'preservação cultural',
+        'diversidade cultural',
+        'arte educação',
+        'tradições populares',
+        'identidade nacional',
+        'globalização cultura',
+        'patrimônio histórico',
+        'expressões artísticas'
+      ],
+      'educação': [
+        'acesso educação superior',
+        'qualidade ensino',
+        'evasão escolar',
+        'alfabetização',
+        'educação inclusiva',
+        'formação professores',
+        'tecnologia educação',
+        'educação profissional'
+      ]
+    };
+    
+    const termos = termosPorArea[areaTema] || termosPorArea['social'];
+    const termoAleatorio = termos[Math.floor(Math.random() * termos.length)];
+    
+    console.log(`🔍 Buscando informações sobre: ${termoAleatorio}`);
+    
+    // Buscar informações reais sobre o tema
+    const response = await axios.get(BRAVE_BASE_URL, {
+      headers: {
+        'X-Subscription-Token': BRAVE_API_KEY,
+        'Accept': 'application/json'
+      },
+      params: {
+        q: `${termoAleatorio} Brasil desafios problemas`,
+        count: 5,
+        offset: 0,
+        mkt: 'pt-BR',
+        safesearch: 'moderate'
+      }
+    });
+    
+    if (response.data && response.data.web && response.data.web.results) {
+      const resultados = response.data.web.results;
+      
+      // Gerar tema baseado nos resultados reais
+      const tema = {
+        id: `tema_real_${Date.now()}`,
+        titulo: `Desafios para ${termoAleatorio} no Brasil contemporâneo`,
+        areaTema: areaTema,
+        nivelProva: nivelProva || 'enem',
+        descricao: `Redação ENEM - Proposta de intervenção sobre ${termoAleatorio}`,
+        textosMotivadores: [],
+        dataCriacao: new Date(),
+        fonte: 'Sistema de Temas ENEM - Fontes Reais'
+      };
+      
+      // Criar textos motivadores baseados nos resultados reais
+      resultados.slice(0, 4).forEach((resultado, index) => {
+        tema.textosMotivadores.push({
+          titulo: `Texto ${String.fromCharCode(65 + index)}`,
+          conteudo: resultado.description || `Informações sobre ${termoAleatorio} no contexto brasileiro.`,
+          fonte: resultado.url,
+          fonteTitulo: resultado.title
+        });
+      });
+      
+      console.log(`✅ Tema real gerado: "${tema.titulo}"`);
+      return tema;
+    }
+    
+  } catch (error) {
+    console.error('Erro ao gerar tema real:', error.message);
+  }
+  
+  return null;
+}
+
 // Função para buscar fontes reais usando API do Brave
 async function buscarFonteReal(termo, fonte) {
   try {
@@ -126,13 +241,27 @@ async function buscarFonteReal(termo, fonte) {
       await new Promise(resolve => setTimeout(resolve, waitTime));
     }
 
-    // Tentar apenas as queries mais eficazes
-    const queries = [
-      `${fonte} ${termo} site:gov.br`,
-      `${fonte} ${termo} site:ibge.gov.br`,
-      `${fonte} ${termo} site:mec.gov.br`,
-      `${termo} ${fonte} brasil`
-    ];
+          // Gerar queries variadas para maior diversidade de resultados
+          const timestamp = Date.now();
+          const randomSeed = Math.floor(Math.random() * 100);
+          
+          const queriesBase = [
+            `${fonte} ${termo} site:gov.br`,
+            `${fonte} ${termo} site:ibge.gov.br`,
+            `${fonte} ${termo} site:mec.gov.br`,
+            `${termo} ${fonte} brasil`,
+            `${fonte} ${termo} 2024`,
+            `${termo} ${fonte} dados estatísticos`,
+            `${fonte} ${termo} relatório`,
+            `${termo} ${fonte} política pública`
+          ];
+          
+          // Selecionar 4 queries aleatórias baseadas no timestamp
+          const queries = [];
+          for (let i = 0; i < 4; i++) {
+            const indice = (timestamp + i + randomSeed) % queriesBase.length;
+            queries.push(queriesBase[indice]);
+          }
 
     for (const query of queries) {
       try {
@@ -223,172 +352,40 @@ router.post('/generate-theme-ai', authenticateFirebaseToken, async (req, res) =>
   try {
     const { areaTema, nivelProva, contextoEspecifico, quantidadeTextos } = req.body;
     
-    // Temas ENEM realistas com problematização
-    const temasEstaticos = [
-      {
-        id: `tema_${Date.now()}`,
-        titulo: "Desafios para a valorização do trabalho no Brasil contemporâneo",
+    console.log(`🎯 Gerando tema ENEM REAL para área: ${areaTema || 'social'}`);
+    
+    // Gerar tema real usando API do Brave Search
+    const temaSelecionado = await gerarTemaEnemReal(areaTema || 'social', nivelProva || 'enem');
+    
+    if (!temaSelecionado) {
+      console.log('⚠️ Falha ao gerar tema real, usando fallback');
+      
+      // Fallback simples se a API falhar
+      const temaFallback = {
+        id: `tema_fallback_${Date.now()}`,
+        titulo: `Desafios para ${areaTema || 'questões sociais'} no Brasil contemporâneo`,
         areaTema: areaTema || 'social',
         nivelProva: nivelProva || 'enem',
-        descricao: "Redação ENEM - Proposta de intervenção sobre valorização do trabalho",
+        descricao: `Redação ENEM - Proposta de intervenção sobre ${areaTema || 'questões sociais'}`,
         textosMotivadores: [
           {
-            titulo: "Texto I",
-            conteudo: "O Brasil possui uma das maiores desigualdades salariais do mundo. Segundo dados do IBGE, a diferença entre os 10% mais ricos e os 10% mais pobres é de 13 vezes. Enquanto executivos recebem salários milionários, trabalhadores essenciais como garis, enfermeiros e professores ganham salários que mal cobrem as despesas básicas. Esta realidade contrasta com países desenvolvidos, onde a valorização do trabalho é uma prioridade social.",
-            fonte: "IBGE - Pesquisa Nacional por Amostra de Domicílios, 2023"
-          },
-          {
-            titulo: "Texto II",
-            conteudo: "A pandemia de COVID-19 evidenciou a importância de profissões historicamente desvalorizadas. Profissionais da saúde, entregadores, funcionários de supermercados e trabalhadores da limpeza se tornaram essenciais para o funcionamento da sociedade. No entanto, muitos continuam recebendo salários baixos e trabalhando em condições precárias, sem reconhecimento adequado de sua importância social.",
-            fonte: "Ministério da Saúde - Relatório sobre Trabalhadores Essenciais, 2024"
-          },
-          {
-            titulo: "Texto III",
-            conteudo: "A automação e a inteligência artificial ameaçam milhões de empregos no Brasil. Estudos indicam que até 2030, cerca de 15 milhões de trabalhadores podem ser substituídos por máquinas. Este cenário exige uma redefinição do conceito de trabalho e do valor atribuído às diferentes profissões, especialmente aquelas que requerem habilidades humanas únicas como criatividade, empatia e pensamento crítico.",
-            fonte: "Instituto de Pesquisa Econômica Aplicada (IPEA), 2024"
-          },
-          {
-            titulo: "Texto IV",
-            conteudo: "A educação profissional e tecnológica surge como alternativa para qualificar trabalhadores e aumentar sua valorização no mercado. Programas como o Pronatec e o Novos Caminhos têm como objetivo formar profissionais técnicos em áreas estratégicas. No entanto, ainda há resistência cultural em relação ao ensino técnico, visto por muitos como inferior ao ensino superior tradicional.",
-            fonte: "Ministério da Educação - Política Nacional de Educação Profissional, 2024"
+            titulo: "Texto A",
+            conteudo: "Este é um tema relevante para a sociedade brasileira contemporânea, que apresenta diversos desafios e oportunidades para discussão e reflexão.",
+            fonte: "Sistema de Temas ENEM - Fallback"
           }
         ],
         dataCriacao: new Date(),
-        fonte: 'Sistema de Temas ENEM'
-      },
-      {
-        id: `tema_${Date.now() + 1}`,
-        titulo: "Os desafios para combater a desinformação no Brasil",
-        areaTema: areaTema || 'tecnologia',
-        nivelProva: nivelProva || 'enem',
-        descricao: "Redação ENEM - Proposta de intervenção sobre desinformação e fake news",
-        textosMotivadores: [
-          {
-            titulo: "Texto I",
-            conteudo: "A desinformação se tornou um dos maiores desafios das sociedades democráticas no século XXI. No Brasil, pesquisas indicam que 62% da população já compartilhou informações falsas nas redes sociais, muitas vezes sem saber. As fake news se espalham 6 vezes mais rápido que informações verdadeiras, criando um ambiente de polarização e desconfiança que ameaça a coesão social e a democracia.",
-            fonte: "Instituto de Tecnologia e Sociedade (ITS) - Pesquisa sobre Desinformação, 2024"
-          },
-          {
-            titulo: "Texto II",
-            conteudo: "Durante a pandemia de COVID-19, a desinformação sobre vacinas e tratamentos causou milhares de mortes evitáveis. Teorias conspiratórias sobre a origem do vírus e a eficácia das vacinas levaram muitas pessoas a recusar a imunização. Este fenômeno não se limita à saúde: eleições, mudanças climáticas e direitos humanos também são alvos constantes de campanhas de desinformação organizadas.",
-            fonte: "Organização Mundial da Saúde (OMS) - Relatório sobre Infodemia, 2024"
-          },
-          {
-            titulo: "Texto III",
-            conteudo: "A educação midiática surge como ferramenta fundamental para combater a desinformação. Países como Finlândia e Canadá já implementaram programas de alfabetização midiática nas escolas, ensinando estudantes a identificar fontes confiáveis e verificar informações. No Brasil, iniciativas como o 'EducaMídia' buscam capacitar professores para desenvolver o pensamento crítico dos alunos em relação às informações que consomem.",
-            fonte: "Instituto Palavra Aberta - Programa EducaMídia, 2024"
-          },
-          {
-            titulo: "Texto IV",
-            conteudo: "As plataformas digitais têm responsabilidade crescente no combate à desinformação. Facebook, Twitter e WhatsApp implementaram medidas como fact-checking e limitação de compartilhamentos, mas críticos argumentam que essas ações são insuficientes e podem limitar a liberdade de expressão. O equilíbrio entre combate à desinformação e preservação da liberdade de expressão permanece um desafio complexo para governos e empresas de tecnologia.",
-            fonte: "Comitê Gestor da Internet no Brasil (CGI.br) - Relatório sobre Regulação Digital, 2024"
-          }
-        ],
-        dataCriacao: new Date(),
-        fonte: 'Sistema de Temas ENEM'
-      },
-      {
-        id: `tema_${Date.now() + 2}`,
-        titulo: "Desafios para a inclusão digital no Brasil",
-        areaTema: areaTema || 'tecnologia',
-        nivelProva: nivelProva || 'enem',
-        descricao: "Redação ENEM - Proposta de intervenção sobre inclusão digital",
-        textosMotivadores: [
-          {
-            titulo: "Texto I",
-            conteudo: "A pandemia acelerou a digitalização da sociedade, mas também aprofundou as desigualdades digitais no Brasil. Cerca de 30% da população brasileira não tem acesso à internet, principalmente nas regiões Norte e Nordeste. Entre os que têm acesso, muitos enfrentam conexões lentas e instáveis, limitando suas possibilidades de trabalho remoto, educação online e acesso a serviços públicos digitais.",
-            fonte: "Comitê Gestor da Internet no Brasil (CGI.br) - TIC Domicílios, 2023"
-          },
-          {
-            titulo: "Texto II",
-            conteudo: "A exclusão digital afeta especialmente idosos, pessoas com deficiência e comunidades rurais. Muitos idosos se sentem excluídos da sociedade digital, incapazes de acessar serviços bancários online, fazer compras pela internet ou usar aplicativos de transporte. Pessoas com deficiência enfrentam barreiras de acessibilidade em sites e aplicativos, enquanto comunidades rurais sofrem com a falta de infraestrutura de telecomunicações.",
-            fonte: "Instituto Brasileiro de Geografia e Estatística (IBGE) - Pesquisa Nacional por Amostra de Domicílios, 2023"
-          },
-          {
-            titulo: "Texto III",
-            conteudo: "A educação digital se tornou essencial para a cidadania no século XXI. No entanto, muitas escolas públicas não possuem laboratórios de informática adequados ou professores capacitados para ensinar competências digitais. Esta realidade cria um ciclo de exclusão: estudantes sem acesso à tecnologia digital têm dificuldades para acompanhar o ensino remoto e desenvolvem menos habilidades necessárias para o mercado de trabalho moderno.",
-            fonte: "Ministério da Educação - Censo Escolar, 2023"
-          },
-          {
-            titulo: "Texto IV",
-            conteudo: "Programas como o 'Wi-Fi Brasil' e o 'Internet para Todos' buscam expandir o acesso à internet em áreas remotas, mas enfrentam desafios de infraestrutura e sustentabilidade. A inclusão digital não se limita ao acesso à internet: é necessário também capacitar as pessoas para usar as tecnologias de forma crítica e produtiva, garantindo que todos possam se beneficiar das oportunidades da era digital.",
-            fonte: "Ministério das Comunicações - Plano Nacional de Banda Larga, 2024"
-          }
-        ],
-        dataCriacao: new Date(),
-        fonte: 'Sistema de Temas ENEM'
-      }
-    ];
-    
-    // Selecionar tema aleatório
-    const temaSelecionado = temasEstaticos[Math.floor(Math.random() * temasEstaticos.length)];
-    
-    // Buscar fontes reais apenas para o tema selecionado
-    let fontesReais = [];
-    
-    console.log(`🎯 Tema selecionado: "${temaSelecionado.titulo}"`);
-    
-    if (temaSelecionado.titulo.includes('valorização do trabalho')) {
-      console.log('🔍 Buscando fontes para tema: valorização do trabalho');
-      fontesReais = await Promise.all([
-        buscarFonteReal('desigualdade renda salário', 'IBGE'),
-        buscarFonteReal('trabalhadores essenciais pandemia', 'Ministério da Saúde'),
-        buscarFonteReal('automação inteligência artificial empregos', 'IPEA'),
-        buscarFonteReal('educação profissional técnica', 'MEC')
-      ]);
-    } else if (temaSelecionado.titulo.includes('desinformação')) {
-      console.log('🔍 Buscando fontes para tema: desinformação');
-      fontesReais = await Promise.all([
-        buscarFonteReal('desinformação fake news redes sociais', 'ITS'),
-        buscarFonteReal('infodemia pandemia vacinas', 'OMS'),
-        buscarFonteReal('educação midiática alfabetização', 'Instituto Palavra Aberta'),
-        buscarFonteReal('regulação digital plataformas', 'CGI.br')
-      ]);
-    } else if (temaSelecionado.titulo.includes('inclusão digital')) {
-      console.log('🔍 Buscando fontes para tema: inclusão digital');
-      fontesReais = await Promise.all([
-        buscarFonteReal('inclusão digital acesso internet', 'CGI.br'),
-        buscarFonteReal('exclusão digital desigualdade', 'IBGE'),
-        buscarFonteReal('educação digital competências', 'MEC'),
-        buscarFonteReal('banda larga infraestrutura', 'Ministério das Comunicações')
-      ]);
-    } else {
-      console.log('⚠️ Nenhuma condição de busca de fontes foi atendida');
-    }
-    
-    console.log(`📊 Fontes encontradas: ${fontesReais.length}`);
-    
-    // Atualizar fontes do tema selecionado APENAS com fontes validadas
-    if (fontesReais.length > 0) {
-      console.log('🔄 Atualizando fontes do tema...');
-      temaSelecionado.textosMotivadores = temaSelecionado.textosMotivadores.map((texto, index) => {
-        if (fontesReais[index] && fontesReais[index].validada && fontesReais[index].url) {
-          const novaFonte = fontesReais[index].url;
-          console.log(`✅ Texto ${index + 1}: ${texto.fonte} → ${novaFonte} (VALIDADA)`);
-          return {
-            ...texto,
-            fonte: novaFonte,
-            fonteTitulo: fontesReais[index].titulo || texto.fonte,
-            fonteValidada: true
-          };
-        } else if (fontesReais[index] && fontesReais[index].isFallback) {
-          console.log(`⚠️ Texto ${index + 1}: Mantendo fonte estática - ${texto.fonte} (FALLBACK)`);
-          return {
-            ...texto,
-            fonteValidada: false,
-            isFallback: true
-          };
-        } else {
-          console.log(`❌ Texto ${index + 1}: Fonte rejeitada, mantendo estática - ${texto.fonte}`);
-          return {
-            ...texto,
-            fonteValidada: false
-          };
-        }
+        fonte: 'Sistema de Temas ENEM - Fallback'
+      };
+      
+      return res.json({
+        success: true,
+        tema: temaFallback
       });
-    } else {
-      console.log('⚠️ Nenhuma fonte real foi encontrada, mantendo TODAS as fontes estáticas');
     }
+    
+    console.log(`✅ Tema real gerado com sucesso: "${temaSelecionado.titulo}"`);
+    console.log(`📊 Textos motivadores: ${temaSelecionado.textosMotivadores.length}`);
     
     res.json({
       success: true,
