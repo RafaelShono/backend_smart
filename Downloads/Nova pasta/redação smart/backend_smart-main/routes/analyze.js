@@ -8,7 +8,7 @@ const authenticateFirebaseToken = require('../middlewares/authenticateFirebaseTo
 const admin = require('firebase-admin');
 
 // Configurações da API Brave Search
-const BRAVE_API_KEY = process.env.BRAVE_API_KEY || 'BSANe0vJ56EwwgLZ4zE3nf2S2BLOYCd';
+const BRAVE_API_KEY = process.env.BRAVE_API_KEY || 'BSAGRtt9nx758ZZeL_ujN8GfVarimr-';
 const BRAVE_BASE_URL = 'https://api.search.brave.com/res/v1/web/search';
 
 // Cache e Rate Limiting
