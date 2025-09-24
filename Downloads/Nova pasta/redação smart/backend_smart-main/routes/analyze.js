@@ -91,29 +91,7 @@ router.post('/generate-theme-ai', authenticateFirebaseToken, async (req, res) =>
   try {
     const { areaTema, nivelProva, contextoEspecifico, quantidadeTextos } = req.body;
     
-    // Buscar fontes reais para os temas
-    const fontesTrabalho = await Promise.all([
-      buscarFonteReal('desigualdade renda salário', 'IBGE'),
-      buscarFonteReal('trabalhadores essenciais pandemia', 'Ministério da Saúde'),
-      buscarFonteReal('automação inteligência artificial empregos', 'IPEA'),
-      buscarFonteReal('educação profissional técnica', 'MEC')
-    ]);
-
-    const fontesDesinformacao = await Promise.all([
-      buscarFonteReal('desinformação fake news redes sociais', 'ITS'),
-      buscarFonteReal('infodemia pandemia vacinas', 'OMS'),
-      buscarFonteReal('educação midiática alfabetização', 'Instituto Palavra Aberta'),
-      buscarFonteReal('regulação digital plataformas', 'CGI.br')
-    ]);
-
-    const fontesInclusaoDigital = await Promise.all([
-      buscarFonteReal('inclusão digital acesso internet', 'CGI.br'),
-      buscarFonteReal('exclusão digital desigualdade', 'IBGE'),
-      buscarFonteReal('educação digital competências', 'MEC'),
-      buscarFonteReal('banda larga infraestrutura', 'Ministério das Comunicações')
-    ]);
-    
-    // Temas ENEM realistas com problematização e fontes reais
+    // Temas ENEM realistas com problematização
     const temasEstaticos = [
       {
         id: `tema_${Date.now()}`,
@@ -125,26 +103,22 @@ router.post('/generate-theme-ai', authenticateFirebaseToken, async (req, res) =>
           {
             titulo: "Texto I",
             conteudo: "O Brasil possui uma das maiores desigualdades salariais do mundo. Segundo dados do IBGE, a diferença entre os 10% mais ricos e os 10% mais pobres é de 13 vezes. Enquanto executivos recebem salários milionários, trabalhadores essenciais como garis, enfermeiros e professores ganham salários que mal cobrem as despesas básicas. Esta realidade contrasta com países desenvolvidos, onde a valorização do trabalho é uma prioridade social.",
-            fonte: fontesTrabalho[0].url || "IBGE - Pesquisa Nacional por Amostra de Domicílios, 2023",
-            fonteTitulo: fontesTrabalho[0].titulo || "IBGE - Pesquisa Nacional por Amostra de Domicílios, 2023"
+            fonte: "IBGE - Pesquisa Nacional por Amostra de Domicílios, 2023"
           },
           {
             titulo: "Texto II",
             conteudo: "A pandemia de COVID-19 evidenciou a importância de profissões historicamente desvalorizadas. Profissionais da saúde, entregadores, funcionários de supermercados e trabalhadores da limpeza se tornaram essenciais para o funcionamento da sociedade. No entanto, muitos continuam recebendo salários baixos e trabalhando em condições precárias, sem reconhecimento adequado de sua importância social.",
-            fonte: fontesTrabalho[1].url || "Ministério da Saúde - Relatório sobre Trabalhadores Essenciais, 2024",
-            fonteTitulo: fontesTrabalho[1].titulo || "Ministério da Saúde - Relatório sobre Trabalhadores Essenciais, 2024"
+            fonte: "Ministério da Saúde - Relatório sobre Trabalhadores Essenciais, 2024"
           },
           {
             titulo: "Texto III",
             conteudo: "A automação e a inteligência artificial ameaçam milhões de empregos no Brasil. Estudos indicam que até 2030, cerca de 15 milhões de trabalhadores podem ser substituídos por máquinas. Este cenário exige uma redefinição do conceito de trabalho e do valor atribuído às diferentes profissões, especialmente aquelas que requerem habilidades humanas únicas como criatividade, empatia e pensamento crítico.",
-            fonte: fontesTrabalho[2].url || "Instituto de Pesquisa Econômica Aplicada (IPEA), 2024",
-            fonteTitulo: fontesTrabalho[2].titulo || "Instituto de Pesquisa Econômica Aplicada (IPEA), 2024"
+            fonte: "Instituto de Pesquisa Econômica Aplicada (IPEA), 2024"
           },
           {
             titulo: "Texto IV",
             conteudo: "A educação profissional e tecnológica surge como alternativa para qualificar trabalhadores e aumentar sua valorização no mercado. Programas como o Pronatec e o Novos Caminhos têm como objetivo formar profissionais técnicos em áreas estratégicas. No entanto, ainda há resistência cultural em relação ao ensino técnico, visto por muitos como inferior ao ensino superior tradicional.",
-            fonte: fontesTrabalho[3].url || "Ministério da Educação - Política Nacional de Educação Profissional, 2024",
-            fonteTitulo: fontesTrabalho[3].titulo || "Ministério da Educação - Política Nacional de Educação Profissional, 2024"
+            fonte: "Ministério da Educação - Política Nacional de Educação Profissional, 2024"
           }
         ],
         dataCriacao: new Date(),
@@ -216,6 +190,46 @@ router.post('/generate-theme-ai', authenticateFirebaseToken, async (req, res) =>
     
     // Selecionar tema aleatório
     const temaSelecionado = temasEstaticos[Math.floor(Math.random() * temasEstaticos.length)];
+    
+    // Buscar fontes reais apenas para o tema selecionado
+    let fontesReais = [];
+    
+    if (temaSelecionado.titulo.includes('valorização do trabalho')) {
+      fontesReais = await Promise.all([
+        buscarFonteReal('desigualdade renda salário', 'IBGE'),
+        buscarFonteReal('trabalhadores essenciais pandemia', 'Ministério da Saúde'),
+        buscarFonteReal('automação inteligência artificial empregos', 'IPEA'),
+        buscarFonteReal('educação profissional técnica', 'MEC')
+      ]);
+    } else if (temaSelecionado.titulo.includes('desinformação')) {
+      fontesReais = await Promise.all([
+        buscarFonteReal('desinformação fake news redes sociais', 'ITS'),
+        buscarFonteReal('infodemia pandemia vacinas', 'OMS'),
+        buscarFonteReal('educação midiática alfabetização', 'Instituto Palavra Aberta'),
+        buscarFonteReal('regulação digital plataformas', 'CGI.br')
+      ]);
+    } else if (temaSelecionado.titulo.includes('inclusão digital')) {
+      fontesReais = await Promise.all([
+        buscarFonteReal('inclusão digital acesso internet', 'CGI.br'),
+        buscarFonteReal('exclusão digital desigualdade', 'IBGE'),
+        buscarFonteReal('educação digital competências', 'MEC'),
+        buscarFonteReal('banda larga infraestrutura', 'Ministério das Comunicações')
+      ]);
+    }
+    
+    // Atualizar fontes do tema selecionado com fontes reais
+    if (fontesReais.length > 0) {
+      temaSelecionado.textosMotivadores = temaSelecionado.textosMotivadores.map((texto, index) => {
+        if (fontesReais[index]) {
+          return {
+            ...texto,
+            fonte: fontesReais[index].url || texto.fonte,
+            fonteTitulo: fontesReais[index].titulo || texto.fonte
+          };
+        }
+        return texto;
+      });
+    }
     
     res.json({
       success: true,
