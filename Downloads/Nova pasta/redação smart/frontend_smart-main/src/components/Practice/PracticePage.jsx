@@ -25,11 +25,9 @@ import {
   FaLightbulb,
   FaRocket,
   FaMagic,
-  FaRobot,
   FaTimes,
   FaEdit,
   FaExternalLinkAlt,
-  FaNewspaper,
   FaSearch,
   FaSpinner
 } from 'react-icons/fa';
@@ -52,11 +50,6 @@ function PracticePage() {
   const [userData, setUserData] = useState(null);
   const textareaRef = useRef(null);
   
-  // Estados para o Agente ENEM
-  const [enemKeywords, setEnemKeywords] = useState('');
-  const [enemThemes, setEnemThemes] = useState([]);
-  const [isGeneratingEnemTheme, setIsGeneratingEnemTheme] = useState(false);
-  const [showEnemAgent, setShowEnemAgent] = useState(false);
 
   // Carregar temas do Firestore
   useEffect(() => {
@@ -200,83 +193,6 @@ function PracticePage() {
     }
   };
 
-  // Gerar tema ENEM com notícias atuais
-  const gerarTemaEnem = async () => {
-    if (!enemKeywords.trim()) {
-      setErrorMessage('Por favor, insira pelo menos uma palavra-chave para o agente ENEM');
-      return;
-    }
-
-    setIsGeneratingEnemTheme(true);
-    setErrorMessage('');
-    
-    try {
-      const token = await usuarioAtual.getIdToken();
-      const keywordsArray = enemKeywords.split(',').map(k => k.trim()).filter(k => k);
-
-      const response = await fetch('/api/generate-enem-themes', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          keywords: keywordsArray,
-          limit: 3
-        })
-      });
-
-      const data = await response.json();
-
-      if (data.success && data.themes.length > 0) {
-        // Converter tema ENEM para formato compatível com a interface
-        const temaEnem = data.themes[0];
-        const novoTema = {
-          id: `enem_${Date.now()}`,
-          titulo: temaEnem.title,
-          areaTema: 'enem',
-          nivelProva: 'enem',
-          textosMotivadores: [
-            {
-              titulo: 'Contexto Atual',
-              conteudo: temaEnem.summary,
-              fonte: temaEnem.sourceUrl
-            },
-            {
-              titulo: 'Eixo Temático',
-              conteudo: `Este tema está relacionado ao eixo temático: ${temaEnem.thematicAxis}`,
-              fonte: 'Análise do Agente ENEM'
-            },
-            {
-              titulo: 'Abordagens Sugeridas',
-              conteudo: temaEnem.suggestedApproaches.join('\n\n'),
-              fonte: 'Sugestões do Agente ENEM'
-            }
-          ],
-          dataCriacao: new Date(),
-          fonte: 'Agente ENEM',
-          relevanciaEnem: temaEnem.enemRelevance,
-          palavrasChave: temaEnem.keywords,
-          complexidade: temaEnem.complexity,
-          potencialArgumentativo: temaEnem.argumentativePotential
-        };
-
-        setTemas(prev => [novoTema, ...prev]);
-        setTemaSelecionado(novoTema);
-        setEnemThemes(data.themes);
-        setShowEnemAgent(false);
-        
-        console.log('🎯 Tema ENEM gerado:', novoTema);
-      } else {
-        setErrorMessage(data.message || 'Nenhum tema ENEM relevante encontrado');
-      }
-    } catch (error) {
-      setErrorMessage('Erro ao gerar tema ENEM. Tente novamente.');
-      console.error('Erro ao gerar tema ENEM:', error);
-    } finally {
-      setIsGeneratingEnemTheme(false);
-    }
-  };
 
   // Analisar redação
   const analisarRedacao = async () => {
@@ -508,24 +424,6 @@ function PracticePage() {
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900">Tema Selecionado</h3>
                           <p className="text-sm text-gray-600 mt-1">{temaSelecionado.titulo}</p>
-                          {temaSelecionado.fonte === 'Agente ENEM' && (
-                            <div className="flex items-center gap-2 mt-2">
-                              <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                                <FaNewspaper className="inline mr-1" />
-                                Agente ENEM
-                              </span>
-                              {temaSelecionado.relevanciaEnem && (
-                                <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                                  Relevância: {temaSelecionado.relevanciaEnem}/10
-                                </span>
-                              )}
-                              {temaSelecionado.complexidade && (
-                                <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
-                                  {temaSelecionado.complexidade}
-                                </span>
-                              )}
-                            </div>
-                          )}
                         </div>
                         <motion.button
                           onClick={() => setTemaSelecionado(null)}
@@ -544,44 +442,6 @@ function PracticePage() {
                         <Avaliacao avaliacao={avaliacao} />
                       ) : (
                         <div className="space-y-6">
-                          {/* Informações do Agente ENEM */}
-                          {temaSelecionado?.fonte === 'Agente ENEM' && temaSelecionado.palavrasChave && (
-                            <Card variant="outlined" className="bg-blue-50 border-blue-200">
-                              <Card.Header>
-                                <div className="flex items-center space-x-2">
-                                  <div className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center">
-                                    <FaRobot className="text-blue-600 text-xs" data-no-animate />
-                                  </div>
-                                  <h4 className="font-semibold text-blue-900">Análise do Agente ENEM</h4>
-                                </div>
-                              </Card.Header>
-                              <Card.Body>
-                                <div className="space-y-3">
-                                  <div>
-                                    <h5 className="font-medium text-blue-900 text-sm mb-2">Palavras-chave identificadas:</h5>
-                                    <div className="flex flex-wrap gap-2">
-                                      {temaSelecionado.palavrasChave.map((palavra, index) => (
-                                        <span
-                                          key={index}
-                                          className="px-2 py-1 bg-blue-200 text-blue-800 rounded-full text-xs font-medium"
-                                        >
-                                          {palavra}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                  {temaSelecionado.potencialArgumentativo && (
-                                    <div className="flex items-center justify-between text-sm">
-                                      <span className="text-blue-800">Potencial Argumentativo:</span>
-                                      <span className="font-medium text-blue-900">
-                                        {temaSelecionado.potencialArgumentativo}/10
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                              </Card.Body>
-                            </Card>
-                          )}
 
                           {/* Textos Motivadores */}
                           {temaSelecionado?.textosMotivadores && temaSelecionado.textosMotivadores.length > 0 && (
@@ -843,16 +703,6 @@ function PracticePage() {
                       {isGeneratingTheme ? 'Gerando...' : 'Gerar Tema'}
                     </motion.button>
 
-                    <motion.button
-                      onClick={() => setShowEnemAgent(!showEnemAgent)}
-                      className="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium rounded-xl hover:from-blue-600 hover:to-blue-700 transition-colors duration-300 shadow-lg hover:shadow-xl"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <FaNewspaper className="mr-2" data-animate />
-                      Agente ENEM
-                    </motion.button>
 
                     <motion.button
                       onClick={analisarRedacao}
@@ -896,95 +746,6 @@ function PracticePage() {
                   </div>
                 </Sidebar.Section>
 
-                {/* Seção do Agente ENEM */}
-                <AnimatePresence>
-                  {showEnemAgent && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <Sidebar.Section title="Agente ENEM">
-                        <div className="space-y-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Palavras-chave
-                            </label>
-                            <input
-                              type="text"
-                              value={enemKeywords}
-                              onChange={(e) => setEnemKeywords(e.target.value)}
-                              placeholder="Ex: sustentabilidade, tecnologia educação"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">
-                              Separe com vírgulas
-                            </p>
-                          </div>
-
-                          <div className="flex flex-wrap gap-1">
-                            {['sustentabilidade', 'tecnologia educação', 'desigualdade social', 'saúde mental'].map((keyword) => (
-                              <button
-                                key={keyword}
-                                onClick={() => setEnemKeywords(keyword)}
-                                className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs hover:bg-blue-200 transition-colors duration-200"
-                              >
-                                {keyword}
-                              </button>
-                            ))}
-                          </div>
-
-                          <motion.button
-                            onClick={gerarTemaEnem}
-                            disabled={isGeneratingEnemTheme || !enemKeywords.trim()}
-                            className="w-full inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium rounded-xl hover:from-blue-600 hover:to-blue-700 transition-colors duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            transition={{ duration: 0.2 }}
-                          >
-                            {isGeneratingEnemTheme ? (
-                              <motion.div
-                                className="w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"
-                                animate={{ rotate: 360 }}
-                                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                              />
-                            ) : (
-                              <FaSearch className="mr-2" data-animate />
-                            )}
-                            {isGeneratingEnemTheme ? 'Buscando...' : 'Gerar Tema ENEM'}
-                          </motion.button>
-
-                          {enemThemes.length > 0 && (
-                            <div className="mt-4">
-                              <h4 className="text-sm font-medium text-gray-700 mb-2">
-                                Temas ENEM Encontrados ({enemThemes.length})
-                              </h4>
-                              <div className="space-y-2 max-h-32 overflow-y-auto">
-                                {enemThemes.map((theme, index) => (
-                                  <div
-                                    key={index}
-                                    className="p-2 bg-blue-50 rounded-lg border border-blue-200"
-                                  >
-                                    <div className="text-xs font-medium text-blue-900 mb-1">
-                                      {theme.title}
-                                    </div>
-                                    <div className="flex items-center justify-between text-xs text-blue-700">
-                                      <span>Relevância: {theme.enemRelevance}/10</span>
-                                      <span className="px-1 py-0.5 bg-blue-200 rounded text-blue-800">
-                                        {theme.difficultyLevel}
-                                      </span>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </Sidebar.Section>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
 
                 <Sidebar.Section title="Progresso">
                   <div className="space-y-4">
