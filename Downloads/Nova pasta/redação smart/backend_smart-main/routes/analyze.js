@@ -202,9 +202,32 @@ async function gerarTemaEnemReal(areaTema, nivelProva) {
       
       // Criar textos motivadores baseados nos resultados reais
       resultados.slice(0, 4).forEach((resultado, index) => {
+        // Limpar e processar o conteúdo
+        let conteudo = resultado.description || `Informações sobre ${termoAleatorio} no contexto brasileiro.`;
+        
+        // Remover tags HTML
+        conteudo = conteudo.replace(/<[^>]*>/g, '');
+        
+        // Remover caracteres especiais e entidades HTML
+        conteudo = conteudo.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+        conteudo = conteudo.replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+        
+        // Filtrar conteúdo de proteção de segurança
+        if (conteudo.includes('security service') || 
+            conteudo.includes('Please enable JavaScript') ||
+            conteudo.includes('We are checking your browser') ||
+            conteudo.length < 50) {
+          conteudo = `Este tema aborda questões importantes sobre ${termoAleatorio} no contexto brasileiro, apresentando desafios e oportunidades para discussão e reflexão na sociedade contemporânea.`;
+        }
+        
+        // Limitar tamanho do conteúdo
+        if (conteudo.length > 300) {
+          conteudo = conteudo.substring(0, 300) + '...';
+        }
+        
         tema.textosMotivadores.push({
           titulo: `Texto ${String.fromCharCode(65 + index)}`,
-          conteudo: resultado.description || `Informações sobre ${termoAleatorio} no contexto brasileiro.`,
+          conteudo: conteudo,
           fonte: resultado.url,
           fonteTitulo: resultado.title
         });
