@@ -14,35 +14,65 @@ const BRAVE_BASE_URL = 'https://api.search.brave.com/res/v1/web/search';
 // Função para buscar fontes reais usando API do Brave
 async function buscarFonteReal(termo, fonte) {
   try {
-    const query = `${fonte} ${termo} site:gov.br OR site:ibge.gov.br OR site:saude.gov.br OR site:mec.gov.br`;
-    
-    const response = await axios.get(BRAVE_BASE_URL, {
-      headers: {
-        'X-Subscription-Token': BRAVE_API_KEY,
-        'Accept': 'application/json'
-      },
-      params: {
-        q: query,
-        count: 3,
-        offset: 0,
-        mkt: 'pt-BR',
-        safesearch: 'moderate'
-      }
-    });
+    // Tentar diferentes estratégias de busca
+    const queries = [
+      `${fonte} ${termo} site:gov.br`,
+      `${fonte} ${termo} site:ibge.gov.br`,
+      `${fonte} ${termo} site:saude.gov.br`,
+      `${fonte} ${termo} site:mec.gov.br`,
+      `${fonte} ${termo} site:ipea.gov.br`,
+      `${fonte} ${termo} site:cgi.br`,
+      `${termo} ${fonte} brasil`,
+      `${fonte} ${termo} 2023 2024`
+    ];
 
-    if (response.data && response.data.web && response.data.web.results && response.data.web.results.length > 0) {
-      const resultado = response.data.web.results[0];
-      return {
-        url: resultado.url,
-        titulo: resultado.title,
-        descricao: resultado.description
-      };
+    for (const query of queries) {
+      try {
+        const response = await axios.get(BRAVE_BASE_URL, {
+          headers: {
+            'X-Subscription-Token': BRAVE_API_KEY,
+            'Accept': 'application/json'
+          },
+          params: {
+            q: query,
+            count: 5,
+            offset: 0,
+            mkt: 'pt-BR',
+            safesearch: 'moderate'
+          }
+        });
+
+        if (response.data && response.data.web && response.data.web.results && response.data.web.results.length > 0) {
+          // Procurar resultado mais relevante
+          const resultado = response.data.web.results.find(r => 
+            r.url.includes('.gov.br') || 
+            r.url.includes('ibge') || 
+            r.url.includes('mec') ||
+            r.url.includes('saude') ||
+            r.url.includes('ipea') ||
+            r.url.includes('cgi')
+          ) || response.data.web.results[0];
+
+          if (resultado && resultado.url) {
+            console.log(`✅ Fonte encontrada para ${fonte}: ${resultado.url}`);
+            return {
+              url: resultado.url,
+              titulo: resultado.title,
+              descricao: resultado.description
+            };
+          }
+        }
+      } catch (queryError) {
+        console.log(`❌ Query falhou: ${query}`, queryError.message);
+        continue;
+      }
     }
   } catch (error) {
-    console.error('Erro ao buscar fonte real:', error.message);
+    console.error('Erro geral ao buscar fonte real:', error.message);
   }
   
   // Fallback para fonte estática se a API falhar
+  console.log(`⚠️ Usando fallback para ${fonte}`);
   return {
     url: null,
     titulo: fonte,
@@ -63,24 +93,24 @@ router.post('/generate-theme-ai', authenticateFirebaseToken, async (req, res) =>
     
     // Buscar fontes reais para os temas
     const fontesTrabalho = await Promise.all([
-      buscarFonteReal('desigualdade salarial', 'IBGE'),
-      buscarFonteReal('trabalhadores essenciais', 'Ministério da Saúde'),
-      buscarFonteReal('automação empregos', 'IPEA'),
-      buscarFonteReal('educação profissional', 'MEC')
+      buscarFonteReal('desigualdade renda salário', 'IBGE'),
+      buscarFonteReal('trabalhadores essenciais pandemia', 'Ministério da Saúde'),
+      buscarFonteReal('automação inteligência artificial empregos', 'IPEA'),
+      buscarFonteReal('educação profissional técnica', 'MEC')
     ]);
 
     const fontesDesinformacao = await Promise.all([
-      buscarFonteReal('desinformação fake news', 'ITS'),
-      buscarFonteReal('infodemia pandemia', 'OMS'),
-      buscarFonteReal('educação midiática', 'Instituto Palavra Aberta'),
-      buscarFonteReal('regulação digital', 'CGI.br')
+      buscarFonteReal('desinformação fake news redes sociais', 'ITS'),
+      buscarFonteReal('infodemia pandemia vacinas', 'OMS'),
+      buscarFonteReal('educação midiática alfabetização', 'Instituto Palavra Aberta'),
+      buscarFonteReal('regulação digital plataformas', 'CGI.br')
     ]);
 
     const fontesInclusaoDigital = await Promise.all([
-      buscarFonteReal('inclusão digital', 'CGI.br'),
-      buscarFonteReal('exclusão digital', 'IBGE'),
-      buscarFonteReal('educação digital', 'MEC'),
-      buscarFonteReal('banda larga', 'Ministério das Comunicações')
+      buscarFonteReal('inclusão digital acesso internet', 'CGI.br'),
+      buscarFonteReal('exclusão digital desigualdade', 'IBGE'),
+      buscarFonteReal('educação digital competências', 'MEC'),
+      buscarFonteReal('banda larga infraestrutura', 'Ministério das Comunicações')
     ]);
     
     // Temas ENEM realistas com problematização e fontes reais
