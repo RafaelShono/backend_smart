@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { FaPenFancy, FaTrash, FaPaperPlane, FaClock, FaFileAlt, FaLightbulb, FaCheckCircle, FaExclamationTriangle, FaEye, FaEyeSlash, FaRobot, FaSync, FaMagic } from 'react-icons/fa';
-import ThemeGenerator from '../ThemeGenerator/ThemeGenerator';
 import API_CONFIG from '../../config/api';
 
 function RedacaoForm(props) {
@@ -23,7 +22,6 @@ function RedacaoForm(props) {
   const [showWordCount, setShowWordCount] = useState(true);
   const [isGeneratingTheme, setIsGeneratingTheme] = useState(false);
   const [generatedTheme, setGeneratedTheme] = useState(null);
-  const [showThemeGenerator, setShowThemeGenerator] = useState(false);
   const textareaRef = useRef(null);
   const [writingSession, setWritingSession] = useState({
     startTime: null,
@@ -189,13 +187,6 @@ function RedacaoForm(props) {
     }
   };
 
-  // Função para lidar com tema gerado pelo ThemeGenerator
-  const handleThemeGenerated = (tema) => {
-    setGeneratedTheme(tema);
-    if (addGeneratedTheme) {
-      addGeneratedTheme(tema);
-    }
-  };
 
   // Função para limpar o texto
   const handleLimparFolha = useCallback(() => {
@@ -349,14 +340,6 @@ function RedacaoForm(props) {
                   <span>Gerar Tema</span>
                 </>
               )}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowThemeGenerator(true)}
-              className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white text-sm font-medium rounded-lg hover:from-cyan-400 hover:to-blue-400 transition-all duration-300"
-            >
-              <FaRobot />
-              <span>Configurar</span>
             </button>
           </div>
         </div>
@@ -679,13 +662,6 @@ function RedacaoForm(props) {
         </div>
       </form>
 
-      {/* ThemeGenerator Modal */}
-      {showThemeGenerator && (
-        <ThemeGenerator
-          onThemeGenerated={handleThemeGenerated}
-          onClose={() => setShowThemeGenerator(false)}
-        />
-      )}
     </div>
   );
 }

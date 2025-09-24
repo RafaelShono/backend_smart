@@ -27,7 +27,8 @@ function PlanoPage() {
     try {
       const stripe = await stripePromise;
       console.log('AMBIENTE:', STRIPE_CONFIG.isDevelopment ? 'DESENVOLVIMENTO' : 'PRODUÇÃO');
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/create-checkout-session`, {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : 'https://backend-smart-ys4l.onrender.com');
+      const response = await fetch(`${backendUrl}/create-checkout-session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

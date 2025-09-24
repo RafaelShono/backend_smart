@@ -15,15 +15,12 @@ import Plano from './components/PlanoPago/Plano';
 import Contato from './components/Contato/Contato';
 import CanceladoPage from './components/Cancelar/Cancelar';
 import SucessoPage from './components/Sucesso/Sucesso';
-import NewsAgent from './components/NewsAgent/NewsAgent';
-import TestColors from './components/TestColors';
 function App() {
   return (
     <>
       <Header />
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/test-colors" element={<TestColors />} />
         <Route
           path="/praticar"
           element={
@@ -71,14 +68,6 @@ function App() {
         <Route path="/Contato" element={<Contato />} />
         <Route path="/cancelado" element={<CanceladoPage />} />
         <Route path="/sucesso" element={<SucessoPage />} />
-        <Route
-          path="/news-agent"
-          element={
-            <ProtectedRoute>
-              <NewsAgent />
-            </ProtectedRoute>
-          }
-        />
       </Routes>
       
     </>

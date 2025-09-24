@@ -1,0 +1,28 @@
+{
+  "name": "enem-agent",
+  "version": "1.0.0",
+  "description": "Agente de IA para gerar temas de redação ENEM baseado em notícias atuais",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "node test/test.js"
+  },
+  "keywords": [
+    "enem",
+    "redacao",
+    "ia",
+    "noticias",
+    "brave-search"
+  ],
+  "author": "Redação Smart",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "node-cache": "^5.1.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
