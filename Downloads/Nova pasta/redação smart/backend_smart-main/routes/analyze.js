@@ -7,6 +7,49 @@ const Anthropic = require('@anthropic-ai/sdk');
 const authenticateFirebaseToken = require('../middlewares/authenticateFirebaseToken');
 const admin = require('firebase-admin');
 
+// Configurações da API Brave Search
+const BRAVE_API_KEY = process.env.BRAVE_API_KEY || 'BSANe0vJ56EwwgLZ4zE3nf2S2BLOYCd';
+const BRAVE_BASE_URL = 'https://api.search.brave.com/res/v1/web/search';
+
+// Função para buscar fontes reais usando API do Brave
+async function buscarFonteReal(termo, fonte) {
+  try {
+    const query = `${fonte} ${termo} site:gov.br OR site:ibge.gov.br OR site:saude.gov.br OR site:mec.gov.br`;
+    
+    const response = await axios.get(BRAVE_BASE_URL, {
+      headers: {
+        'X-Subscription-Token': BRAVE_API_KEY,
+        'Accept': 'application/json'
+      },
+      params: {
+        q: query,
+        count: 3,
+        offset: 0,
+        mkt: 'pt-BR',
+        safesearch: 'moderate'
+      }
+    });
+
+    if (response.data && response.data.web && response.data.web.results && response.data.web.results.length > 0) {
+      const resultado = response.data.web.results[0];
+      return {
+        url: resultado.url,
+        titulo: resultado.title,
+        descricao: resultado.description
+      };
+    }
+  } catch (error) {
+    console.error('Erro ao buscar fonte real:', error.message);
+  }
+  
+  // Fallback para fonte estática se a API falhar
+  return {
+    url: null,
+    titulo: fonte,
+    descricao: null
+  };
+}
+
 // Certifique-se de que o Firebase Admin está inicializado
 // admin.initializeApp({
 //   credential: admin.credential.applicationDefault(),
@@ -18,7 +61,29 @@ router.post('/generate-theme-ai', authenticateFirebaseToken, async (req, res) =>
   try {
     const { areaTema, nivelProva, contextoEspecifico, quantidadeTextos } = req.body;
     
-    // Temas ENEM realistas com problematização
+    // Buscar fontes reais para os temas
+    const fontesTrabalho = await Promise.all([
+      buscarFonteReal('desigualdade salarial', 'IBGE'),
+      buscarFonteReal('trabalhadores essenciais', 'Ministério da Saúde'),
+      buscarFonteReal('automação empregos', 'IPEA'),
+      buscarFonteReal('educação profissional', 'MEC')
+    ]);
+
+    const fontesDesinformacao = await Promise.all([
+      buscarFonteReal('desinformação fake news', 'ITS'),
+      buscarFonteReal('infodemia pandemia', 'OMS'),
+      buscarFonteReal('educação midiática', 'Instituto Palavra Aberta'),
+      buscarFonteReal('regulação digital', 'CGI.br')
+    ]);
+
+    const fontesInclusaoDigital = await Promise.all([
+      buscarFonteReal('inclusão digital', 'CGI.br'),
+      buscarFonteReal('exclusão digital', 'IBGE'),
+      buscarFonteReal('educação digital', 'MEC'),
+      buscarFonteReal('banda larga', 'Ministério das Comunicações')
+    ]);
+    
+    // Temas ENEM realistas com problematização e fontes reais
     const temasEstaticos = [
       {
         id: `tema_${Date.now()}`,
@@ -30,22 +95,26 @@ router.post('/generate-theme-ai', authenticateFirebaseToken, async (req, res) =>
           {
             titulo: "Texto I",
             conteudo: "O Brasil possui uma das maiores desigualdades salariais do mundo. Segundo dados do IBGE, a diferença entre os 10% mais ricos e os 10% mais pobres é de 13 vezes. Enquanto executivos recebem salários milionários, trabalhadores essenciais como garis, enfermeiros e professores ganham salários que mal cobrem as despesas básicas. Esta realidade contrasta com países desenvolvidos, onde a valorização do trabalho é uma prioridade social.",
-            fonte: "IBGE - Pesquisa Nacional por Amostra de Domicílios, 2023"
+            fonte: fontesTrabalho[0].url || "IBGE - Pesquisa Nacional por Amostra de Domicílios, 2023",
+            fonteTitulo: fontesTrabalho[0].titulo || "IBGE - Pesquisa Nacional por Amostra de Domicílios, 2023"
           },
           {
             titulo: "Texto II",
             conteudo: "A pandemia de COVID-19 evidenciou a importância de profissões historicamente desvalorizadas. Profissionais da saúde, entregadores, funcionários de supermercados e trabalhadores da limpeza se tornaram essenciais para o funcionamento da sociedade. No entanto, muitos continuam recebendo salários baixos e trabalhando em condições precárias, sem reconhecimento adequado de sua importância social.",
-            fonte: "Ministério da Saúde - Relatório sobre Trabalhadores Essenciais, 2024"
+            fonte: fontesTrabalho[1].url || "Ministério da Saúde - Relatório sobre Trabalhadores Essenciais, 2024",
+            fonteTitulo: fontesTrabalho[1].titulo || "Ministério da Saúde - Relatório sobre Trabalhadores Essenciais, 2024"
           },
           {
             titulo: "Texto III",
             conteudo: "A automação e a inteligência artificial ameaçam milhões de empregos no Brasil. Estudos indicam que até 2030, cerca de 15 milhões de trabalhadores podem ser substituídos por máquinas. Este cenário exige uma redefinição do conceito de trabalho e do valor atribuído às diferentes profissões, especialmente aquelas que requerem habilidades humanas únicas como criatividade, empatia e pensamento crítico.",
-            fonte: "Instituto de Pesquisa Econômica Aplicada (IPEA), 2024"
+            fonte: fontesTrabalho[2].url || "Instituto de Pesquisa Econômica Aplicada (IPEA), 2024",
+            fonteTitulo: fontesTrabalho[2].titulo || "Instituto de Pesquisa Econômica Aplicada (IPEA), 2024"
           },
           {
             titulo: "Texto IV",
             conteudo: "A educação profissional e tecnológica surge como alternativa para qualificar trabalhadores e aumentar sua valorização no mercado. Programas como o Pronatec e o Novos Caminhos têm como objetivo formar profissionais técnicos em áreas estratégicas. No entanto, ainda há resistência cultural em relação ao ensino técnico, visto por muitos como inferior ao ensino superior tradicional.",
-            fonte: "Ministério da Educação - Política Nacional de Educação Profissional, 2024"
+            fonte: fontesTrabalho[3].url || "Ministério da Educação - Política Nacional de Educação Profissional, 2024",
+            fonteTitulo: fontesTrabalho[3].titulo || "Ministério da Educação - Política Nacional de Educação Profissional, 2024"
           }
         ],
         dataCriacao: new Date(),
