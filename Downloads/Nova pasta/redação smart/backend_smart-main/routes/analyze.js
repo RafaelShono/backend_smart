@@ -194,7 +194,10 @@ router.post('/generate-theme-ai', authenticateFirebaseToken, async (req, res) =>
     // Buscar fontes reais apenas para o tema selecionado
     let fontesReais = [];
     
+    console.log(`🎯 Tema selecionado: "${temaSelecionado.titulo}"`);
+    
     if (temaSelecionado.titulo.includes('valorização do trabalho')) {
+      console.log('🔍 Buscando fontes para tema: valorização do trabalho');
       fontesReais = await Promise.all([
         buscarFonteReal('desigualdade renda salário', 'IBGE'),
         buscarFonteReal('trabalhadores essenciais pandemia', 'Ministério da Saúde'),
@@ -202,6 +205,7 @@ router.post('/generate-theme-ai', authenticateFirebaseToken, async (req, res) =>
         buscarFonteReal('educação profissional técnica', 'MEC')
       ]);
     } else if (temaSelecionado.titulo.includes('desinformação')) {
+      console.log('🔍 Buscando fontes para tema: desinformação');
       fontesReais = await Promise.all([
         buscarFonteReal('desinformação fake news redes sociais', 'ITS'),
         buscarFonteReal('infodemia pandemia vacinas', 'OMS'),
@@ -209,26 +213,36 @@ router.post('/generate-theme-ai', authenticateFirebaseToken, async (req, res) =>
         buscarFonteReal('regulação digital plataformas', 'CGI.br')
       ]);
     } else if (temaSelecionado.titulo.includes('inclusão digital')) {
+      console.log('🔍 Buscando fontes para tema: inclusão digital');
       fontesReais = await Promise.all([
         buscarFonteReal('inclusão digital acesso internet', 'CGI.br'),
         buscarFonteReal('exclusão digital desigualdade', 'IBGE'),
         buscarFonteReal('educação digital competências', 'MEC'),
         buscarFonteReal('banda larga infraestrutura', 'Ministério das Comunicações')
       ]);
+    } else {
+      console.log('⚠️ Nenhuma condição de busca de fontes foi atendida');
     }
+    
+    console.log(`📊 Fontes encontradas: ${fontesReais.length}`);
     
     // Atualizar fontes do tema selecionado com fontes reais
     if (fontesReais.length > 0) {
+      console.log('🔄 Atualizando fontes do tema...');
       temaSelecionado.textosMotivadores = temaSelecionado.textosMotivadores.map((texto, index) => {
         if (fontesReais[index]) {
+          const novaFonte = fontesReais[index].url || texto.fonte;
+          console.log(`📝 Texto ${index + 1}: ${texto.fonte} → ${novaFonte}`);
           return {
             ...texto,
-            fonte: fontesReais[index].url || texto.fonte,
+            fonte: novaFonte,
             fonteTitulo: fontesReais[index].titulo || texto.fonte
           };
         }
         return texto;
       });
+    } else {
+      console.log('⚠️ Nenhuma fonte real foi encontrada, mantendo fontes estáticas');
     }
     
     res.json({
