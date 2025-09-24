@@ -215,7 +215,7 @@ async function gerarTemaEnemReal(areaTema, nivelProva) {
         
         // Verificar se o conteúdo é válido e em português
         const isValidPortuguese = (
-          conteudo.length >= 100 && // Mínimo 100 caracteres
+          conteudo.length >= 150 && // Mínimo 150 caracteres
           conteudo.length <= 500 && // Máximo 500 caracteres
           !conteudo.includes('security service') &&
           !conteudo.includes('Please enable JavaScript') &&
@@ -223,11 +223,124 @@ async function gerarTemaEnemReal(areaTema, nivelProva) {
           !conteudo.includes('The Brazilian') && // Evitar conteúdo em inglês
           !conteudo.includes('Data privacy is the ability') && // Evitar conteúdo genérico
           !conteudo.includes('Escola líder no Brasil em') && // Evitar conteúdo comercial
+          !conteudo.includes('Portal do Governo Brasileiro') && // Evitar menus de navegação
+          !conteudo.includes('Tipos de Mídias') && // Evitar menus
+          !conteudo.includes('Programas e Cursos Nacionais') && // Evitar menus
+          !conteudo.includes('Como faço minha busca') && // Evitar FAQs
+          !conteudo.includes('Contato · Fale conosco') && // Evitar páginas de contato
+          !conteudo.includes('Dúvidas frequentes') && // Evitar FAQs
+          !conteudo.includes('Logins · Submissões') && // Evitar páginas de login
+          !conteudo.includes('Sobre o') && // Evitar páginas institucionais
+          !conteudo.includes('Parceiros') && // Evitar páginas de parceiros
+          !conteudo.includes('·') && // Evitar listas de navegação
+          !conteudo.includes('Home') && // Evitar páginas iniciais
+          !conteudo.includes('Menu') && // Evitar menus
+          !conteudo.includes('Navegação') && // Evitar navegação
+          !conteudo.includes('Links') && // Evitar páginas de links
+          !conteudo.includes('Acesso') && // Evitar páginas de acesso
+          !conteudo.includes('Login') && // Evitar páginas de login
+          !conteudo.includes('Cadastro') && // Evitar páginas de cadastro
+          !conteudo.includes('Busca') && // Evitar páginas de busca
+          !conteudo.includes('Pesquisa') && // Evitar páginas de pesquisa
+          !conteudo.includes('Resultados') && // Evitar páginas de resultados
+          !conteudo.includes('Filtros') && // Evitar páginas de filtros
+          !conteudo.includes('Ordenar') && // Evitar páginas de ordenação
+          !conteudo.includes('Categorias') && // Evitar páginas de categorias
+          !conteudo.includes('Tags') && // Evitar páginas de tags
+          !conteudo.includes('Compartilhar') && // Evitar botões de compartilhamento
+          !conteudo.includes('Imprimir') && // Evitar botões de impressão
+          !conteudo.includes('Download') && // Evitar botões de download
+          !conteudo.includes('Upload') && // Evitar botões de upload
+          !conteudo.includes('Enviar') && // Evitar botões de envio
+          !conteudo.includes('Submeter') && // Evitar botões de submissão
+          !conteudo.includes('Publicar') && // Evitar botões de publicação
+          !conteudo.includes('Editar') && // Evitar botões de edição
+          !conteudo.includes('Excluir') && // Evitar botões de exclusão
+          !conteudo.includes('Salvar') && // Evitar botões de salvamento
+          !conteudo.includes('Cancelar') && // Evitar botões de cancelamento
+          !conteudo.includes('Voltar') && // Evitar botões de voltar
+          !conteudo.includes('Avançar') && // Evitar botões de avançar
+          !conteudo.includes('Próximo') && // Evitar botões de próximo
+          !conteudo.includes('Anterior') && // Evitar botões de anterior
+          !conteudo.includes('Primeiro') && // Evitar botões de primeiro
+          !conteudo.includes('Último') && // Evitar botões de último
+          !conteudo.includes('Página') && // Evitar paginação
+          !conteudo.includes('Páginas') && // Evitar paginação
+          !conteudo.includes('Total') && // Evitar contadores
+          !conteudo.includes('Itens') && // Evitar listas de itens
+          !conteudo.includes('Registros') && // Evitar listas de registros
+          !conteudo.includes('Dados') && // Evitar listas de dados
+          !conteudo.includes('Informações') && // Evitar listas de informações
+          !conteudo.includes('Conteúdo') && // Evitar listas de conteúdo
+          !conteudo.includes('Arquivos') && // Evitar listas de arquivos
+          !conteudo.includes('Documentos') && // Evitar listas de documentos
+          !conteudo.includes('Imagens') && // Evitar listas de imagens
+          !conteudo.includes('Vídeos') && // Evitar listas de vídeos
+          !conteudo.includes('Áudios') && // Evitar listas de áudios
+          !conteudo.includes('PDFs') && // Evitar listas de PDFs
+          !conteudo.includes('ZIPs') && // Evitar listas de ZIPs
+          !conteudo.includes('RARs') && // Evitar listas de RARs
+          !conteudo.includes('MP3s') && // Evitar listas de MP3s
+          !conteudo.includes('MP4s') && // Evitar listas de MP4s
+          !conteudo.includes('JPGs') && // Evitar listas de JPGs
+          !conteudo.includes('PNGs') && // Evitar listas de PNGs
+          !conteudo.includes('GIFs') && // Evitar listas de GIFs
+          !conteudo.includes('SVGs') && // Evitar listas de SVGs
+          !conteudo.includes('XMLs') && // Evitar listas de XMLs
+          !conteudo.includes('JSONs') && // Evitar listas de JSONs
+          !conteudo.includes('CSVs') && // Evitar listas de CSVs
+          !conteudo.includes('XLSs') && // Evitar listas de XLSs
+          !conteudo.includes('DOCs') && // Evitar listas de DOCs
+          !conteudo.includes('PPTs') && // Evitar listas de PPTs
+          !conteudo.includes('TXTs') && // Evitar listas de TXTs
+          !conteudo.includes('RTFs') && // Evitar listas de RTFs
+          !conteudo.includes('ODTs') && // Evitar listas de ODTs
+          !conteudo.includes('ODSs') && // Evitar listas de ODSs
+          !conteudo.includes('ODPs') && // Evitar listas de ODPs
+          !conteudo.includes('ODGs') && // Evitar listas de ODGs
+          !conteudo.includes('ODFs') && // Evitar listas de ODFs
+          !conteudo.includes('ODMs') && // Evitar listas de ODMs
+          !conteudo.includes('ODBs') && // Evitar listas de ODBs
+          !conteudo.includes('ODCs') && // Evitar listas de ODCs
+          !conteudo.includes('ODEs') && // Evitar listas de ODEs
+          !conteudo.includes('ODFs') && // Evitar listas de ODFs
+          !conteudo.includes('ODGs') && // Evitar listas de ODGs
+          !conteudo.includes('ODHs') && // Evitar listas de ODHs
+          !conteudo.includes('ODIs') && // Evitar listas de ODIs
+          !conteudo.includes('ODJs') && // Evitar listas de ODJs
+          !conteudo.includes('ODKs') && // Evitar listas de ODKs
+          !conteudo.includes('ODLs') && // Evitar listas de ODLs
+          !conteudo.includes('ODMs') && // Evitar listas de ODMs
+          !conteudo.includes('ODNs') && // Evitar listas de ODNs
+          !conteudo.includes('ODOs') && // Evitar listas de ODOs
+          !conteudo.includes('ODPs') && // Evitar listas de ODPs
+          !conteudo.includes('ODQs') && // Evitar listas de ODQs
+          !conteudo.includes('ODRs') && // Evitar listas de ODRs
+          !conteudo.includes('ODSs') && // Evitar listas de ODSs
+          !conteudo.includes('ODTs') && // Evitar listas de ODTs
+          !conteudo.includes('ODUs') && // Evitar listas de ODUs
+          !conteudo.includes('ODVs') && // Evitar listas de ODVs
+          !conteudo.includes('ODWs') && // Evitar listas de ODWs
+          !conteudo.includes('ODXs') && // Evitar listas de ODXs
+          !conteudo.includes('ODYs') && // Evitar listas de ODYs
+          !conteudo.includes('ODZs') && // Evitar listas de ODZs
           (conteudo.includes('Brasil') || conteudo.includes('brasileiro') || conteudo.includes('nacional')) && // Deve mencionar Brasil
           resultado.url.includes('.gov.br') // Priorizar sites governamentais
         );
         
-        if (isValidPortuguese) {
+        // Validação adicional: verificar se o texto tem conteúdo substantivo
+        const hasSubstantiveContent = (
+          conteudo.split(' ').length >= 20 && // Mínimo 20 palavras
+          conteudo.includes('.') && // Deve ter pelo menos um ponto (frase completa)
+          !conteudo.match(/^[A-Z\s·\-]+$/) && // Não deve ser apenas maiúsculas e símbolos
+          !conteudo.match(/^[0-9\s·\-]+$/) && // Não deve ser apenas números e símbolos
+          !conteudo.match(/^[A-Za-z\s·\-]+$/) && // Não deve ser apenas letras e símbolos
+          conteudo.match(/[a-z]/) && // Deve ter pelo menos uma letra minúscula
+          conteudo.match(/[A-Z]/) && // Deve ter pelo menos uma letra maiúscula
+          conteudo.match(/[0-9]/) === null // Não deve ser apenas números
+        );
+        
+        if (isValidPortuguese && hasSubstantiveContent) {
           resultadosFiltrados.push({
             titulo: `Texto ${String.fromCharCode(65 + resultadosFiltrados.length)}`,
             conteudo: conteudo,
