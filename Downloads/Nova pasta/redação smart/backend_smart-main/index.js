@@ -37,6 +37,7 @@ app.use((req, res, next) => {
 // Rotas
 const analyzeRoutes = require('./routes/analyze');
 const paymentRoutes = require('./routes/payments');
+const webhookRoutes = require('./routes/webhook');
 const enviarEmailRouter = require('./routes/enviarEmail');
 const enemAgentRoutes = require('./routes/enemAgent');
 const corretorEnemRoutes = require('./routes/corretorEnem');
@@ -44,6 +45,7 @@ const corretorEnemRoutes = require('./routes/corretorEnem');
 // Usar as rotas
 app.use('/api', analyzeRoutes);
 app.use('/', paymentRoutes);
+app.use('/', webhookRoutes);
 app.use('/api', enviarEmailRouter);
 app.use('/api', enemAgentRoutes);
 app.use('/api', corretorEnemRoutes);

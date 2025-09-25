@@ -5,11 +5,23 @@ const router = express.Router();
 const stripe = require('../config/stripe');
 const admin = require('../config/firebaseAdmin');
 
-// Mapeamento de preços (IDs de preços obtidos do Stripe)
-const priceMap = {
-  '5_redacoes': 'price_1QTiG6JMbU7uvnrjffHehLW2', // 5 redações por 25 reais (único)
-  'anual': 'price_1QTiCAJMbU7uvnrjWApFFk73',     // Anual por 360 reais (recorrente)
-  '10_redacoes': 'price_1QTi64JMbU7uvnrjRsfbwR9Y' // 10 redações por 50 reais/mês (recorrente)
+// Configuração dos planos com preços definidos no frontend
+const planConfig = {
+  '5_redacoes': {
+    name: '5 Redações Mensais',
+    price: 1499, // R$14,99 em centavos
+    description: '5 correções de redação por mês com IA avançada'
+  },
+  '10_redacoes': {
+    name: '10 Redações Mensais', 
+    price: 2499, // R$24,99 em centavos
+    description: '10 correções de redação por mês com suporte prioritário'
+  },
+  'ilimitado': {
+    name: 'Redações Ilimitadas',
+    price: 5499, // R$54,99 em centavos
+    description: 'Correções ilimitadas por mês com suporte 24/7'
+  }
 };
 
 // Endpoint para criar a sessão de checkout
@@ -17,35 +29,65 @@ router.post('/create-checkout-session', async (req, res) => {
   const { plano, userId } = req.body;
 
   // Validar se o plano solicitado existe
-  const priceId = priceMap[plano];
-  if (!priceId) {
+  const plan = planConfig[plano];
+  if (!plan) {
     return res.status(400).send({ error: 'Plano inválido' });
   }
 
-  // Determina o modo com base no tipo de plano
-  // 5 redações = avulso => 'payment'
-  // anual e 10_redacoes = recorrente => 'subscription'
-  let mode;
-  if (plano === '5_redacoes') {
-    mode = 'payment';
-  } else {
-    mode = 'subscription';
-  }
-
   try {
+    // Buscar produtos existentes primeiro
+    const products = await stripe.products.list({ limit: 100 });
+    let product = products.data.find(p => p.name === plan.name);
+    
+    // Se o produto não existir, criar um novo
+    if (!product) {
+      product = await stripe.products.create({
+        name: plan.name,
+        description: plan.description,
+      });
+    }
+
+    // Buscar preços existentes para este produto
+    const prices = await stripe.prices.list({ 
+      product: product.id,
+      limit: 100 
+    });
+    
+    // Verificar se já existe um preço com o valor correto
+    let price = prices.data.find(p => 
+      p.unit_amount === plan.price && 
+      p.currency === 'brl' && 
+      p.recurring && 
+      p.recurring.interval === 'month'
+    );
+
+    // Se o preço não existir, criar um novo
+    if (!price) {
+      price = await stripe.prices.create({
+        product: product.id,
+        unit_amount: plan.price,
+        currency: 'brl',
+        recurring: {
+          interval: 'month',
+        },
+      });
+    }
+
+    // Criar sessão de checkout
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
         {
-          price: priceId,
+          price: price.id,
           quantity: 1,
         },
       ],
-      mode: mode,
+      mode: 'subscription',
       success_url: `${process.env.FRONTEND_URL}/sucesso?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.FRONTEND_URL}/cancelado`,
       metadata: {
         userId: userId,
+        plano: plano,
       },
     });
 
@@ -56,47 +98,32 @@ router.post('/create-checkout-session', async (req, res) => {
   }
 });
 
-// Endpoint para lidar com webhooks do Stripe
-router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-  const sig = req.headers['stripe-signature'];
-  let event;
-
+// Endpoint para verificar status do plano
+router.get('/check-plan-status/:userId', async (req, res) => {
   try {
-    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-  } catch (err) {
-    console.error('Erro ao verificar a assinatura do webhook:', err);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
+    const { userId } = req.params;
+    const db = admin.firestore();
+    const userRef = db.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    const userData = userDoc.data();
+    res.json({
+      planoAtivo: userData.planoAtivo || false,
+      planoAtual: userData.planoAtual || null,
+      limiteRedacoes: userData.limiteRedacoes || 3,
+      redacoesUsadas: userData.redacoesUsadas || 0,
+      dataAtivacao: userData.dataAtivacao || null
+    });
+  } catch (error) {
+    console.error('Erro ao verificar status do plano:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
   }
-
-  // Manipule os eventos relevantes
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
-
-    // Recupere o userId dos metadados
-    const userId = session.metadata.userId;
-
-    // Atualize o campo 'planoAtivo' do usuário no Firestore para 'true'
-    await ativarPlanoUsuario(userId);
-  }
-
-  res.status(200).end();
 });
 
-// Função para atualizar o plano do usuário no Firestore
-const db = admin.firestore();
-
-async function ativarPlanoUsuario(userId) {
-  try {
-    const userRef = db.collection('users').doc(userId);
-    await userRef.update({
-      planoAtivo: true,
-    });
-    console.log(`Plano ativado para o usuário ${userId}`);
-  } catch (error) {
-    console.error(`Erro ao atualizar o plano do usuário ${userId}:`, error);
-  }
-}
+// Webhook removido - usando o webhook.js dedicado
 
 module.exports = router;

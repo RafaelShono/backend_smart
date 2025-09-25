@@ -87,7 +87,7 @@ class CorretorEnem {
       const prompt = this.gerarPromptAnalise(texto, tema);
       
       const response = await anthropic.messages.create({
-        model: "claude-3-5-sonnet-20241022",
+        model: "claude-3-5-haiku-20241022",
         max_tokens: 4000,
         temperature: 0.3,
         messages: [{

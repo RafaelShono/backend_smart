@@ -638,16 +638,29 @@ router.post('/analyze', authenticateFirebaseToken, async (req, res) => {
     }
 
     const userData = userDoc.data();
-    console.log('Dados do usuário encontrados:', { 
-      nome: userData.nome, 
-      redacoesEnviadas: userData.redacoesEnviadas || 0,
-      planoAtivo: userData.planoAtivo 
-    });
+    // Dados do usuário encontrados
 
     // Verifica o contador e o status premium
     const redacoesEnviadas = userData.redacoesEnviadas || 0;
-    if (!userData.planoAtivo && (redacoesEnviadas >= 3)) {
-      return res.status(403).send({ error: 'Limite de redações atingido. Faça upgrade para continuar.' });
+    const planoAtivo = userData.planoAtivo || false;
+    const limiteRedacoes = userData.limiteRedacoes || 3;
+    const redacoesUsadas = userData.redacoesUsadas || 0;
+
+    // Verificar limitações baseadas no plano
+    if (!planoAtivo && redacoesEnviadas >= 3) {
+      return res.status(403).send({ 
+        error: 'Limite de redações gratuito atingido. Faça upgrade para continuar.',
+        limite: 3,
+        usado: redacoesEnviadas
+      });
+    }
+
+    if (planoAtivo && limiteRedacoes !== -1 && redacoesUsadas >= limiteRedacoes) {
+      return res.status(403).send({ 
+        error: `Limite do seu plano atingido (${limiteRedacoes} redações). Renove sua assinatura para continuar.`,
+        limite: limiteRedacoes,
+        usado: redacoesUsadas
+      });
     }
 
     // Chamada à API da Anthropic usando Claude
@@ -656,7 +669,7 @@ router.post('/analyze', authenticateFirebaseToken, async (req, res) => {
       return res.status(500).send({ error: 'Chave da API não configurada.' });
     }
 
-    console.log('Chamando API da Anthropic...');
+    // Chamando API da Anthropic
     
     // Inicializar cliente Anthropic
     const anthropic = new Anthropic({
@@ -665,53 +678,91 @@ router.post('/analyze', authenticateFirebaseToken, async (req, res) => {
 
     // Constrói o prompt
     const prompt = `
-Você é um avaliador experiente de redações do ENEM. Avalie a redação a seguir com base nas 5 competências do ENEM, fornecendo feedback detalhado e uma pontuação para cada competência (0 a 200 pontos). Considere o tema, a imagem e a descrição fornecidos.
+Você é um avaliador experiente de redações do ENEM. Avalie a redação a seguir com base nas 5 competências do ENEM, fornecendo feedback conciso e direto para cada competência (0 a 200 pontos). 
 
 Tema: ${tema.titulo}
-
 Descrição: ${tema.descricao}
-
-${tema.imagem ? `Imagem relacionada ao tema: ${tema.imagem}` : ''}
 
 Redação do aluno:
 ${text}
 
-Lembre-se de avaliar de acordo com os seguintes critérios:
+Avalie cada competência e forneça feedback específico baseado no conteúdo real da redação:
 
-1. **Domínio da escrita formal em língua portuguesa**: Avalie o domínio da norma culta, ortografia, gramática, pontuação.
+1. **Domínio da escrita formal em língua portuguesa**: Avalie gramática, ortografia, pontuação
+2. **Compreensão do tema**: Verifique se compreendeu o tema e usou conhecimentos relevantes
+3. **Organização dos argumentos**: Avalie coerência, coesão e estrutura
+4. **Mecanismos linguísticos**: Analise conectivos e coesão textual
+5. **Proposta de intervenção**: Verifique se há proposta detalhada e coerente
 
-2. **Compreensão do tema e aplicação das áreas de conhecimento**: Verifique se o aluno compreendeu o tema proposto e utilizou conhecimentos de diferentes áreas para desenvolver a argumentação.
+IMPORTANTE: 
+- Analise o texto real e forneça feedback específico baseado no conteúdo
+- Seja direto e objetivo, como um corretor experiente
+- Justifique cada nota com base no que realmente está no texto
+- Identifique pontos fortes e fracos reais da redação
+- Use linguagem clara e educativa
+- Foque em feedback construtivo e específico
 
-3. **Capacidade de interpretação das informações e organização dos argumentos**: Avalie a coerência, coesão e organização das ideias apresentadas.
-
-4. **Domínio dos mecanismos linguísticos de argumentação**: Analise o uso adequado de conectivos, coesão referencial e sequencial.
-
-5. **Capacidade de conclusão com propostas coerentes que respeitem os direitos humanos**: Verifique se o aluno apresentou uma proposta de intervenção detalhada, coerente e respeitosa aos direitos humanos.
-
-Por favor, responda apenas com um objeto JSON contendo as seguintes chaves: 
+Responda APENAS com um objeto JSON válido no formato exato abaixo: 
 {
   "competencias": [
     {
       "id": 1,
-      "descricao": "Feedback da competência 1",
-      "nota": 200
+      "descricao": "O aluno demonstra excepcional domínio da norma culta da língua portuguesa. A redação é clara, fluente e sem erros de gramática, ortografia ou pontuação.",
+      "nota": 200,
+      "pontosFortes": ["Domínio da norma culta", "Clareza na escrita", "Ausência de erros"],
+      "areasMelhoria": [],
+      "sugestoes": ["Continue mantendo o excelente domínio da língua portuguesa"]
     },
     {
       "id": 2,
-      "descricao": "Feedback da competência 2",
-      "nota": 120
+      "descricao": "O estudante compreendeu o tema proposto e utilizou conhecimentos de diferentes áreas para desenvolver a argumentação de forma lógica e relevante. A redação demonstra uma análise profunda e bem fundamentada sobre o assunto.",
+      "nota": 200,
+      "pontosFortes": ["Compreensão do tema", "Uso de conhecimentos interdisciplinares", "Argumentação bem fundamentada"],
+      "areasMelhoria": [],
+      "sugestoes": ["Continue desenvolvendo argumentos com base em conhecimentos de diferentes áreas"]
     },
-    // ... mais competências
+    {
+      "id": 3,
+      "descricao": "A redação é bem organizada, com uma estrutura lógica e clara que facilita a compreensão do argumento. As ideias estão ligadas de forma coerente e a sequência de pensamento faz sentido.",
+      "nota": 200,
+      "pontosFortes": ["Estrutura lógica", "Coerência textual", "Organização clara"],
+      "areasMelhoria": [],
+      "sugestoes": ["Mantenha a excelente organização e coerência textual"]
+    },
+    {
+      "id": 4,
+      "descricao": "Excelente uso dos mecanismos linguísticos para argumentação, com conectivos bem utilizados para encadeamento das ideias. Há clareza e coesão na apresentação dos argumentos.",
+      "nota": 200,
+      "pontosFortes": ["Uso adequado de conectivos", "Coesão textual", "Clareza argumentativa"],
+      "areasMelhoria": [],
+      "sugestoes": ["Continue utilizando conectivos de forma adequada para melhorar a coesão"]
+    },
+    {
+      "id": 5,
+      "descricao": "Apesar de o texto apresentar ótimos argumentos, o aluno não propõe medidas de intervenção detalhadas e coerentes, o que é um aspecto fundamental exigido pelo ENEM.",
+      "nota": 150,
+      "pontosFortes": ["Argumentação sólida", "Compreensão do tema"],
+      "areasMelhoria": ["Falta de proposta de intervenção", "Ausência de medidas específicas"],
+      "sugestoes": ["Desenvolva propostas de intervenção detalhadas com agentes, ações e efeitos esperados"]
+    }
   ],
-  "pontuacaoTotal": 850,
-  "comentariosGerais": "Ótima redação! Continue assim."
+  "pontuacaoTotal": 950,
+  "comentariosGerais": "Redação de excelente qualidade com domínio da norma culta, compreensão adequada do tema e argumentação bem estruturada. O principal ponto de melhoria é o desenvolvimento de propostas de intervenção mais detalhadas.",
+  "pontosFortes": ["Domínio excepcional da língua portuguesa", "Compreensão profunda do tema", "Argumentação bem fundamentada", "Estrutura lógica e coerente"],
+  "areasMelhoria": ["Desenvolvimento de propostas de intervenção mais detalhadas"],
+  "sugestoesProximasRedacoes": ["Foque em desenvolver propostas de intervenção com agentes, ações e efeitos específicos"],
+  "analiseOrtografiaGramatica": {
+    "errosEncontrados": [],
+    "sugestoes": ["Continue mantendo o excelente domínio da norma culta"],
+    "exemplos": []
+  }
 }
     `.trim();
 
     // Chamada à API da Anthropic usando Claude
     const response = await anthropic.messages.create({
       model: 'claude-3-5-haiku-20241022',
-      max_tokens: 1500,
+      max_tokens: 3000,
       messages: [
         {
           role: 'user',
@@ -721,7 +772,8 @@ Por favor, responda apenas com um objeto JSON contendo as seguintes chaves:
     });
 
     const analysisText = response.content[0].text.trim();
-    console.log('Resposta da Anthropic recebida:', analysisText.substring(0, 200) + '...');
+    console.log('Resposta da Anthropic recebida (primeiros 500 caracteres):', analysisText.substring(0, 500));
+    console.log('Tamanho total da resposta:', analysisText.length);
 
     // Tenta parsear a resposta como JSON
     let analysis;
@@ -730,57 +782,177 @@ Por favor, responda apenas com um objeto JSON contendo as seguintes chaves:
       console.log('Análise parseada com sucesso');
     } catch (err) {
       console.error('Erro ao parsear a resposta da IA como JSON:', err);
-      console.error('Resposta da IA:', analysisText);
-      return res
-        .status(500)
-        .send({ error: 'Erro ao processar a avaliação. Tente novamente mais tarde.' });
+      console.error('Resposta da IA completa:', analysisText);
+      
+      // Se a IA retornou algo, mas não é JSON válido, tentar extrair informações
+      if (analysisText && analysisText.length > 50) {
+        console.log('Tentando extrair informações da resposta não-JSON...');
+        
+        // Tentar fazer uma nova chamada com prompt mais específico
+        try {
+          const retryPrompt = `
+A resposta anterior não foi um JSON válido. Por favor, analise a redação a seguir e retorne APENAS um objeto JSON válido no formato exato abaixo.
+
+Tema: ${tema.titulo}
+Descrição: ${tema.descricao}
+
+Redação do aluno:
+${text}
+
+Avalie de acordo com as 5 competências do ENEM e retorne APENAS este JSON:
+
+{
+  "competencias": [
+    {
+      "id": 1,
+      "descricao": "Análise real da competência 1 baseada na redação",
+      "nota": 0,
+      "pontosFortes": ["pontos reais encontrados"],
+      "areasMelhoria": ["áreas reais que precisam melhorar"],
+      "sugestoes": ["sugestões reais e específicas"]
+    },
+    {
+      "id": 2,
+      "descricao": "Análise real da competência 2 baseada na redação",
+      "nota": 0,
+      "pontosFortes": ["pontos reais encontrados"],
+      "areasMelhoria": ["áreas reais que precisam melhorar"],
+      "sugestoes": ["sugestões reais e específicas"]
+    },
+    {
+      "id": 3,
+      "descricao": "Análise real da competência 3 baseada na redação",
+      "nota": 0,
+      "pontosFortes": ["pontos reais encontrados"],
+      "areasMelhoria": ["áreas reais que precisam melhorar"],
+      "sugestoes": ["sugestões reais e específicas"]
+    },
+    {
+      "id": 4,
+      "descricao": "Análise real da competência 4 baseada na redação",
+      "nota": 0,
+      "pontosFortes": ["pontos reais encontrados"],
+      "areasMelhoria": ["áreas reais que precisam melhorar"],
+      "sugestoes": ["sugestões reais e específicas"]
+    },
+    {
+      "id": 5,
+      "descricao": "Análise real da competência 5 baseada na redação",
+      "nota": 0,
+      "pontosFortes": ["pontos reais encontrados"],
+      "areasMelhoria": ["áreas reais que precisam melhorar"],
+      "sugestoes": ["sugestões reais e específicas"]
+    }
+  ],
+  "pontuacaoTotal": 0,
+  "comentariosGerais": "Análise real e detalhada da redação",
+  "pontosFortes": ["pontos fortes reais da redação"],
+  "areasMelhoria": ["áreas reais que precisam melhorar"],
+  "sugestoesProximasRedacoes": ["sugestões reais para próximas redações"],
+  "analiseOrtografiaGramatica": {
+    "errosEncontrados": ["erros reais encontrados na redação"],
+    "sugestoes": ["sugestões reais para melhorar ortografia e gramática"],
+    "exemplos": ["exemplos reais de correção"]
+  }
+}
+          `;
+          
+          const retryResponse = await anthropic.messages.create({
+            model: 'claude-3-5-haiku-20241022',
+            max_tokens: 3000,
+            messages: [
+              {
+                role: 'user',
+                content: retryPrompt,
+              },
+            ],
+          });
+          
+          const retryText = retryResponse.content[0].text.trim();
+          console.log('Tentativa de retry - resposta:', retryText.substring(0, 200) + '...');
+          
+          analysis = JSON.parse(retryText);
+          console.log('Análise de retry parseada com sucesso');
+          
+        } catch (retryErr) {
+          console.error('Erro na tentativa de retry:', retryErr);
+          throw new Error('Falha na análise da IA - resposta inválida');
+        }
+      } else {
+        throw new Error('Falha na análise da IA - resposta vazia ou inválida');
+      }
     }
 
-    // Verifica se todas as chaves necessárias estão presentes
+    // Verifica se as chaves básicas estão presentes
     const requiredFields = ['competencias', 'pontuacaoTotal', 'comentariosGerais'];
     const hasAllFields = requiredFields.every((field) => field in analysis);
 
     if (!hasAllFields) {
-      console.error('Resposta JSON da IA está faltando campos:', analysis);
+      console.error('Resposta JSON da IA está faltando campos básicos:', analysis);
       return res
         .status(500)
         .send({ error: 'Resposta inválida da avaliação. Tente novamente mais tarde.' });
     }
 
+    // Adiciona campos padrão se não existirem
+    if (!analysis.pontosFortes) analysis.pontosFortes = [];
+    if (!analysis.areasMelhoria) analysis.areasMelhoria = [];
+    if (!analysis.sugestoesProximasRedacoes) analysis.sugestoesProximasRedacoes = [];
+    if (!analysis.analiseOrtografiaGramatica) {
+      analysis.analiseOrtografiaGramatica = {
+        errosEncontrados: [],
+        sugestoes: [],
+        exemplos: []
+      };
+    }
+
+    // Verifica e completa as competências
+    if (analysis.competencias && Array.isArray(analysis.competencias)) {
+      for (const competencia of analysis.competencias) {
+        if (!competencia.pontosFortes) competencia.pontosFortes = [];
+        if (!competencia.areasMelhoria) competencia.areasMelhoria = [];
+        if (!competencia.sugestoes) competencia.sugestoes = [];
+      }
+    }
+
     // Salva a redação e a avaliação no Firestore
-    console.log('Salvando redação no Firestore...');
-    await admin.firestore().collection('redacoes').add({
+    
+    const docRef = await admin.firestore().collection('redacoes').add({
       usuarioId: user.uid,
       nome: userData.nome,
       fotoURL: userData.fotoURL,
       texto: text,
       avaliacao: analysis,
+      pontuacaoTotal: analysis.pontuacaoTotal, // Adicionar pontuação total no nível raiz para facilitar consultas
+      tema: tema, // Salvar tema completo para exibição
       temaId: tema.id || 'unknown',
       criadoEm: admin.firestore.FieldValue.serverTimestamp(),
     });
-    console.log('Redação salva no Firestore');
-
+    
     // Atualiza o número de redações enviadas pelo usuário
-    console.log('Atualizando contador de redações...');
     await userDocRef.update({
       redacoesEnviadas: admin.firestore.FieldValue.increment(1),
+      redacoesUsadas: admin.firestore.FieldValue.increment(1),
     });
-    console.log('Contador de redações atualizado');
-
-    console.log('Análise concluída com sucesso!');
     res.status(200).json({ analysis });
   } catch (error) {
     console.error('Erro ao analisar a redação:', error.response?.data || error.message || error);
 
-    // Tratamento de erros
+    // Tratamento de erros específicos da API Anthropic
     if (error.response && error.response.status === 401) {
-      res.status(500).send({ error: 'Falha na autenticação. Verifique a chave da API.' });
+      res.status(500).send({ error: 'Falha na autenticação da API. Verifique a chave da API.' });
     } else if (error.response && error.response.status === 429) {
-      res.status(500).send({ error: 'Limite de taxa excedido. Tente novamente mais tarde.' });
+      res.status(500).send({ error: 'Limite de taxa da API excedido. Tente novamente mais tarde.' });
+    } else if (error.response && error.response.status === 404) {
+      res.status(500).send({ error: 'Modelo da IA não encontrado. Contate o suporte.' });
+    } else if (error.response && error.response.status >= 500) {
+      res.status(500).send({ error: 'Erro interno da API da IA. Tente novamente mais tarde.' });
     } else if (error.message === 'Limite de redações atingido. Faça upgrade para continuar.') {
       res.status(403).send({ error: 'Limite de redações atingido. Faça upgrade para continuar.' });
+    } else if (error.message && error.message.includes('Falha na análise da IA')) {
+      res.status(500).send({ error: 'Erro na análise da IA. Tente novamente.' });
     } else {
-      res.status(500).send({ error: 'Erro ao analisar a redação' });
+      res.status(500).send({ error: 'Erro interno do servidor. Tente novamente mais tarde.' });
     }
   }
 });

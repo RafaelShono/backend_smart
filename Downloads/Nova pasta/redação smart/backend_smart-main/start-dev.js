@@ -19,8 +19,14 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 }));
 
-// Middleware para JSON
-app.use(express.json({ limit: '1mb' }));
+// Middleware especial para a rota /webhook, que precisa do corpo bruto da requisição
+app.use((req, res, next) => {
+  if (req.originalUrl === '/webhook') {
+    next();
+  } else {
+    express.json({ limit: '1mb' })(req, res, next);
+  }
+});
 
 // Middleware para Cross-Origin-Opener-Policy
 app.use((req, res, next) => {
@@ -32,14 +38,18 @@ app.use((req, res, next) => {
 // Rotas
 const analyzeRoutes = require('./routes/analyze');
 const paymentRoutes = require('./routes/payments');
+const webhookRoutes = require('./routes/webhook');
 const enviarEmailRouter = require('./routes/enviarEmail');
-const newsAgentRoutes = require('./routes/newsAgent');
+const enemAgentRoutes = require('./routes/enemAgent');
+const corretorEnemRoutes = require('./routes/corretorEnem');
 
 // Usar as rotas
-app.use('/', analyzeRoutes);
+app.use('/api', analyzeRoutes);
 app.use('/', paymentRoutes);
+app.use('/', webhookRoutes);
 app.use('/api', enviarEmailRouter);
-app.use('/api', newsAgentRoutes);
+app.use('/api', enemAgentRoutes);
+app.use('/api', corretorEnemRoutes);
 
 // Rota de teste
 app.get('/api/test', (req, res) => {
@@ -51,7 +61,7 @@ app.get('/api/test', (req, res) => {
 });
 
 // Iniciar o servidor
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor de desenvolvimento rodando na porta ${PORT}`);
   console.log(`📡 CORS configurado para localhost:5173`);
